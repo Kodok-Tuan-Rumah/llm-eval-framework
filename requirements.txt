@@ -1,11 +1,14 @@
 # Core — HTTP client untuk Ollama API
 requests==2.31.0
 
+# API service — HTTP wrapper (api.py)
+fastapi>=0.115
+uvicorn>=0.30
+
 # Numerics — cosine similarity
 numpy==1.26.4
 
 # Text Processing
-nltk==3.8.1
 rouge-score==0.1.2
 
 # Config

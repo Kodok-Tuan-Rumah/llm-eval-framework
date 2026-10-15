@@ -32,12 +32,9 @@ logs/
 .env
 
 # Reports — generated files, tidak di-commit
+# (reports/charts/ sengaja TIDAK di-ignore: PNG-nya di-commit untuk README)
 reports/results/
-reports/charts/
 reports/report.html
 
 # Checkpoints — resume state, tidak di-commit
 logs/checkpoints/
-
-# NLTK data
-nltk_data/nohup.out
