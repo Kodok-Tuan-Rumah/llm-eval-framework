@@ -505,3 +505,64 @@ class TestCheckpointHelpers:
         assert mistral_cp["model"] == "mistral"
         assert phi3_cp["model"] == "phi3:mini"
         assert mistral_cp["score"] != phi3_cp["score"]
+
+
+# TestShortAnswerContextMatching — jalur API tanpa ground_truth
+class TestShortAnswerContextMatching:
+    def _case_no_ground_truth(self, context):
+        return {
+            "id": "api_case_001",
+            "context": context,
+            "question": "Which HTTP method should be used?",
+        }
+
+    def test_grounded_short_answer_scores_1_0(self, mock_embedder):
+        evaluator = _make_evaluator(mock_embedder)
+        case = self._case_no_ground_truth("To update partially, use the PATCH method.")
+        result = evaluator.evaluate(case, "PATCH", "test")
+        assert result.faithfulness_score == 1.0
+        assert result.has_failure is False
+        assert result.evaluation_path == "short_answer_exact_match"
+
+    def test_word_boundary_rejects_substring_false_positive(self, mock_embedder):
+        evaluator = _make_evaluator(mock_embedder)
+        case = self._case_no_ground_truth("The dispatcher handles background events.")
+        result = evaluator.evaluate(case, "PATCH", "test")
+        assert result.faithfulness_score == 0.0
+        assert result.has_failure is True
+
+    def test_absent_from_context_scores_0_0(self, mock_embedder):
+        evaluator = _make_evaluator(mock_embedder)
+        case = self._case_no_ground_truth("GET and POST are supported.")
+        result = evaluator.evaluate(case, "PATCH", "test")
+        assert result.faithfulness_score == 0.0
+        assert result.has_failure is True
+
+    def test_multiword_phrase_grounded(self, mock_embedder):
+        evaluator = _make_evaluator(mock_embedder)
+        case = self._case_no_ground_truth("The endpoint returns a JSON response object.")
+        result = evaluator.evaluate(case, "JSON response", "test")
+        assert result.faithfulness_score == 1.0
+        assert result.has_failure is False
+
+    def test_grounding_gate_uses_word_boundary(self, mock_embedder):
+        from evaluators.faithfulness import (
+            _char_similarity,
+            SHORT_ANSWER_CHAR_SIM_THRESHOLD,
+        )
+
+        evaluator = _make_evaluator(mock_embedder)
+        case = {
+            "id": "gate_case",
+            "context": "The output is written to disk.",
+            "question": "Which HTTP method?",
+            "ground_truth": "POST",
+        }
+        result = evaluator.evaluate(case, "PUT", "test")
+
+        sim = _char_similarity("put", "post")
+        assert sim < SHORT_ANSWER_CHAR_SIM_THRESHOLD
+        # 'put' hanya muncul di dalam kata 'output' → tidak grounded →
+        # skor = base_score * 0.5, bukan base_score penuh.
+        assert result.faithfulness_score == round(sim * 0.5, 4)
+        assert result.has_failure is True

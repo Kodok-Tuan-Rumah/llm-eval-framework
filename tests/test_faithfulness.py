@@ -18,7 +18,23 @@ from evaluators.faithfulness import (
     FaithfulnessResult,
     DEFAULT_SIMILARITY_THRESHOLD,
     INSUFFICIENT_VALIDATION_THRESHOLD,
+    _contains_phrase,
 )
+
+
+def _config_threshold(name: str) -> float:
+    """Baca threshold langsung dari config.yaml.
+
+    Satu sumber kebenaran adalah config.yaml (prinsip config-driven di README);
+    test tidak boleh hardcode angka yang bisa di-recalibrate.
+    """
+    import yaml
+    from pathlib import Path
+
+    config_path = Path(__file__).resolve().parent.parent / "config.yaml"
+    with open(config_path, encoding="utf-8") as f:
+        return yaml.safe_load(f)["thresholds"][name]
+
 
 # Fixtures
 @pytest.fixture
@@ -405,6 +421,23 @@ class TestDiagnosis:
         diagnosis = evaluator._diagnose_failure(match)
         assert "hallucination" in diagnosis.lower() or "no relevant" in diagnosis.lower()
 
+# Test: short-answer context matching helper
+class TestContainsPhrase:
+    def test_rejects_substring_inside_word(self):
+        assert _contains_phrase("the dispatcher handles events", "patch") is False
+
+    def test_matches_whole_word(self):
+        assert _contains_phrase("use patch to update", "patch") is True
+
+    def test_matches_multiword_phrase(self):
+        assert _contains_phrase("returns a json response object", "json response") is True
+
+    def test_empty_needle_never_matches(self):
+        assert _contains_phrase("anything", "") is False
+
+    def test_singular_phrase_not_matched_inside_plural(self):
+        assert _contains_phrase("query parameters are strings", "query parameter") is False
+
 # Test: Constants
 class TestConstants:
     def test_default_threshold_range(self):
@@ -414,8 +447,8 @@ class TestConstants:
         assert INSUFFICIENT_VALIDATION_THRESHOLD < DEFAULT_SIMILARITY_THRESHOLD
 
     def test_threshold_values(self):
-        assert DEFAULT_SIMILARITY_THRESHOLD == 0.75
-        assert INSUFFICIENT_VALIDATION_THRESHOLD == 0.65
+        assert DEFAULT_SIMILARITY_THRESHOLD == _config_threshold("faithfulness_evidence")
+        assert INSUFFICIENT_VALIDATION_THRESHOLD == _config_threshold("insufficient_ctx_validation")
 
 # Integration-style test
 class TestIntegration:

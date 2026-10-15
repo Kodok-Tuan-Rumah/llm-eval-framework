@@ -20,6 +20,18 @@ def _normalize(text: str) -> str:
 def _char_similarity(a: str, b: str) -> float:
     return SequenceMatcher(None, a, b).ratio()
 
+def _contains_phrase(haystack: str, needle: str) -> bool:
+    """True jika `needle` muncul di `haystack` sebagai kata/frasa utuh.
+
+    Dipakai untuk short answer supaya substring di dalam kata lain tidak
+    dianggap grounded (contoh: 'patch' tidak match 'dispatch').
+    Input diharapkan sudah lewat _normalize() (lowercase, tanpa tanda baca).
+    """
+    if not needle:
+        return False
+    pattern = rf"(?<!\w){re.escape(needle)}(?!\w)"
+    return re.search(pattern, haystack) is not None
+
 def _is_short_answer(answer: str) -> bool:
     threshold = config["thresholds"]["short_answer_max_words"]
     return len(answer.strip().split()) < threshold
@@ -315,7 +327,7 @@ def _has_technical_conflict(claim: str, evidence: str) -> bool:
 
 # Faithfulness Evaluator
 class FaithfulnessEvaluator:
-    VERSION = "1.2.1"
+    VERSION = "1.2.2"
 
     def __init__(
         self,
@@ -356,24 +368,40 @@ class FaithfulnessEvaluator:
         norm_truth  = _normalize(ground_truth)
         norm_ctx    = _normalize(context)
 
-        # Exact match
-        if norm_answer == norm_truth:
-            match_type = "exact"
-            base_score = 1.0
-            matched    = True
-        # Substring match
-        elif norm_answer in norm_truth or norm_truth in norm_answer:
-            match_type = "substring"
-            base_score = 0.9
-            matched    = True
-        # Character similarity
+        # The online API has no ground_truth. In that case, use a conservative
+        # whole-word/phrase match against the supplied evidence instead of
+        # comparing every answer with the empty string (which would make all
+        # answers match).
+        if not norm_truth:
+            grounded = _contains_phrase(norm_ctx, norm_answer)
+            match_type = "context_exact_match" if grounded else "no_evidence_match"
+            base_score = 1.0 if grounded else 0.0
+            matched = grounded
+        elif not norm_answer:
+            # Answer yang seluruhnya tanda baca (mis. "!!!") tidak boleh
+            # dianggap match hanya karena string kosong.
+            match_type = "no_match"
+            base_score = 0.0
+            matched    = False
         else:
-            char_sim   = _char_similarity(norm_answer, norm_truth)
-            matched    = char_sim >= SHORT_ANSWER_CHAR_SIM_THRESHOLD
-            match_type = "char_similarity" if matched else "no_match"
-            base_score = round(char_sim, 4)
+            # Exact match
+            if norm_answer == norm_truth:
+                match_type = "exact"
+                base_score = 1.0
+                matched    = True
+            # Substring match
+            elif norm_answer in norm_truth or norm_truth in norm_answer:
+                match_type = "substring"
+                base_score = 0.9
+                matched    = True
+            # Character similarity
+            else:
+                char_sim   = _char_similarity(norm_answer, norm_truth)
+                matched    = char_sim >= SHORT_ANSWER_CHAR_SIM_THRESHOLD
+                match_type = "char_similarity" if matched else "no_match"
+                base_score = round(char_sim, 4)
 
-        grounded = norm_answer in norm_ctx
+        grounded = _contains_phrase(norm_ctx, norm_answer)
         score    = base_score if (grounded or matched) else round(base_score * 0.5, 4)
         has_fail = not matched
 
