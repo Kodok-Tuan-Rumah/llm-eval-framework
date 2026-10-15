@@ -8,10 +8,11 @@ from datetime import datetime, timezone
 import numpy as np
 
 from evaluators.faithfulness import OllamaEmbedder, OLLAMA_BASE_URL, EMBEDDING_MODEL
+from pipeline.config_loader import config
 
 logger = logging.getLogger("retrieval_dependency")
 
-DEFAULT_CHANGE_THRESHOLD = 0.70
+DEFAULT_CHANGE_THRESHOLD = config["thresholds"]["retrieval_dependency_change"]
 
 # Kondisi konteks yang dievaluasi
 CONDITION_FULL    = "full_context"
@@ -402,7 +403,7 @@ if __name__ == "__main__":
     print("Hanya butuh nomic-embed-text, tidak butuh LLM")
     print("=" * 60)
 
-    evaluator = RetrievalDependencyEvaluator(change_threshold=0.70)
+    evaluator = RetrievalDependencyEvaluator()
 
     print("\n[1] Health check...")
     if not evaluator.health_check():

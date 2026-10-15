@@ -9,11 +9,12 @@ import numpy as np
 from rouge_score import rouge_scorer
 
 from evaluators.faithfulness import OllamaEmbedder, OLLAMA_BASE_URL, EMBEDDING_MODEL
+from pipeline.config_loader import config
 
 logger = logging.getLogger("consistency")
 
-DEFAULT_SEMANTIC_THRESHOLD = 0.72
-DEFAULT_ROUGE_THRESHOLD = 0.40
+DEFAULT_SEMANTIC_THRESHOLD = config["thresholds"]["consistency_semantic"]
+DEFAULT_ROUGE_THRESHOLD = config["thresholds"]["consistency_rouge_l"]
 
 
 @dataclass
@@ -355,7 +356,7 @@ if __name__ == "__main__":
     print("Hanya butuh nomic-embed-text, tidak butuh LLM")
     print("=" * 60)
 
-    evaluator = ConsistencyEvaluator(semantic_threshold=0.72, rouge_threshold=0.40)
+    evaluator = ConsistencyEvaluator()
 
     print("\n[1] Health check...")
     if not evaluator.health_check():

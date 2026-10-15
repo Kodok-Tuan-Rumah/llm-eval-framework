@@ -10,10 +10,11 @@ import numpy as np
 from rouge_score import rouge_scorer
 
 from evaluators.faithfulness import OllamaEmbedder, OLLAMA_BASE_URL, EMBEDDING_MODEL
+from pipeline.config_loader import config
 
 logger = logging.getLogger("sensitivity")
 
-DEFAULT_ROBUSTNESS_THRESHOLD = 0.85
+DEFAULT_ROBUSTNESS_THRESHOLD = config["thresholds"]["robustness_sensitivity"]
 
 # Tipe perturbasi yang tersedia
 PERTURBATION_TYPO      = "typo"
@@ -499,7 +500,7 @@ if __name__ == "__main__":
     print("Hanya butuh nomic-embed-text, tidak butuh LLM")
     print("=" * 60)
 
-    evaluator = SensitivityEvaluator(robustness_threshold=0.85)
+    evaluator = SensitivityEvaluator()
 
     print("\n[1] Health check...")
     if not evaluator.health_check():

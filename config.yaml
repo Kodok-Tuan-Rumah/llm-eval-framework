@@ -4,6 +4,7 @@ thresholds:
   consistency_semantic: 0.72
   consistency_rouge_l: 0.40
   robustness_sensitivity: 0.85
+  retrieval_dependency_change: 0.70    # jawaban berubah saat konteks dihapus/diganti
   short_answer_max_words: 5          
   short_answer_char_sim: 0.85         
 

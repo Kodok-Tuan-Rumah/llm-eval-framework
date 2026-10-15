@@ -13,6 +13,7 @@ from pipeline.model_client import OllamaClient, save_query_results, QueryOutput
 from pipeline.prompt_templates import PromptTemplate, TEMPLATE_VERSION
 from pipeline.config_loader import config
 from evaluators.faithfulness import FaithfulnessEvaluator
+from evaluators.consistency import ConsistencyEvaluator
 
 logging.basicConfig(
     level=logging.INFO,
@@ -62,14 +63,25 @@ def _load_json_cases(path: Path, dataset_name: str) -> list[dict]:
         data = json.load(f)
 
     cases = data.get("cases", [])
-    required_fields = {"id", "context", "question"}
     for case in cases:
-        missing = required_fields - set(case.keys())
+        missing = {"id", "context"} - set(case.keys())
         if missing:
             raise ValueError(
                 f"Case '{case.get('id', 'unknown')}' di dataset '{dataset_name}' "
                 f"missing required fields: {missing}"
             )
+        if "question" not in case and "variants" not in case:
+            raise ValueError(
+                f"Case '{case.get('id', 'unknown')}' di dataset '{dataset_name}' "
+                f"harus punya field 'question' (faithfulness) atau 'variants' (consistency)"
+            )
+        for variant in case.get("variants", []):
+            missing_variant = {"label", "question"} - set(variant.keys())
+            if missing_variant:
+                raise ValueError(
+                    f"Case '{case.get('id', 'unknown')}' di dataset '{dataset_name}' "
+                    f"variant missing required fields: {missing_variant}"
+                )
     return cases
 
 # checkpoint helpers — resume capability
@@ -165,6 +177,14 @@ def run_evaluation(
     resume: bool = True,
     dry_run: bool = False,
 ) -> dict:
+    if dataset_name == "paraphrase":
+        # Paraphrase dievaluasi sebagai dimensi konsistensi, bukan faithfulness.
+        return run_consistency_evaluation(
+            model_name=model_name,
+            limit=limit,
+            dry_run=dry_run,
+        )
+
     similarity_threshold = similarity_threshold or config["thresholds"]["faithfulness_evidence"]
 
     run_id = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
@@ -180,17 +200,31 @@ def run_evaluation(
     logger.info("Loading dataset...")
     cases = load_dataset(dataset_name, limit=limit)
     logger.info(f"Loaded {len(cases)} cases")
+
+    # Case paraphrase punya 'variants' (bukan 'question') dan dievaluasi lewat
+    # run_consistency_evaluation; pipeline faithfulness hanya clean + distractor.
+    paraphrase_cases = [c for c in cases if "variants" in c]
+    if paraphrase_cases:
+        cases = [c for c in cases if "variants" not in c]
+        logger.info(
+            f"{len(paraphrase_cases)} paraphrase cases di-skip dari run faithfulness — "
+            f"evaluasi terpisah: --dataset paraphrase"
+        )
+
     if not cases:
         logger.error("No cases to evaluate.")
         sys.exit(1)
-        
+
     if dry_run:
         print(f"\n[DRY RUN] Dataset valid: {len(cases)} cases")
+        if paraphrase_cases:
+            print(f"[DRY RUN] {len(paraphrase_cases)} paraphrase cases di-skip "
+                  f"(dievaluasi via --dataset paraphrase)")
         print(f"[DRY RUN] Model: {model_name} | Threshold: {similarity_threshold}")
         for case in cases:
             print(f"  {case['id']} — {case['question'][:60]}")
         print("\n[DRY RUN] Selesai. Tidak ada inference yang dijalankan.")
-        return {"dry_run": True, "cases": len(cases)}
+        return {"dry_run": True, "cases": len(cases), "skipped_paraphrase": len(paraphrase_cases)}
 
     client = OllamaClient(model=model_name, temperature=0.0)
     faithfulness_evaluator = FaithfulnessEvaluator(
@@ -383,12 +417,6 @@ def _query_with_template(client: OllamaClient, case: dict, case_type: str) -> Qu
             question=case["question"],
             distractor_type=distractor_type,
         )
-    elif case_type == "paraphrase":
-        prompt = PromptTemplate.consistency_qa(
-            context=case["context"],
-            question=case["question"],
-            variant_label="original",
-        )
     else:
         prompt = PromptTemplate.strict_qa(
             context=case["context"],
@@ -452,9 +480,100 @@ def _detect_case_type(case: dict) -> str:
     case_id = case.get("id", "")
     if "distractor" in case_id:
         return "distractor"
-    elif "paraphrase" in case_id:
-        return "paraphrase"
     return "clean"
+
+# consistency runner — paraphrase dataset (multi-variant cases)
+def run_consistency_evaluation(
+    model_name: str,
+    limit: int = None,
+    dry_run: bool = False,
+) -> dict:
+    """Evaluasi dimensi konsistensi pada dataset paraphrase.
+
+    Setiap case punya beberapa varian pertanyaan; semua varian ditanyakan ke
+    model, lalu ConsistencyEvaluator mengukur stabilitas jawaban antar varian.
+    Tidak memakai checkpoint resume (dataset kecil — 6 cases).
+    """
+    run_id = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    logger.info(
+        f"Starting consistency evaluation | run_id={run_id} | model={model_name} | "
+        f"dataset=paraphrase | limit={limit} | dry_run={dry_run} | checkpoint=off"
+    )
+
+    REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+    output_prefix = REPORTS_DIR / f"{model_name.replace(':', '-')}_paraphrase_{run_id}"
+
+    cases = load_dataset("paraphrase", limit=limit)
+    total_variants = sum(len(c.get("variants", [])) for c in cases)
+    logger.info(f"Loaded {len(cases)} cases ({total_variants} variants)")
+    if not cases:
+        logger.error("No cases to evaluate.")
+        sys.exit(1)
+
+    if dry_run:
+        print(f"\n[DRY RUN] Dataset valid: {len(cases)} cases ({total_variants} variants)")
+        print(f"[DRY RUN] Model: {model_name} | Evaluation: consistency")
+        for case in cases:
+            labels = ", ".join(v["label"] for v in case.get("variants", []))
+            print(f"  {case['id']} — {len(case.get('variants', []))} variants ({labels})")
+        print("\n[DRY RUN] Selesai. Tidak ada inference yang dijalankan.")
+        return {"dry_run": True, "cases": len(cases), "variants": total_variants}
+
+    client = OllamaClient(model=model_name, temperature=0.0)
+    consistency_evaluator = ConsistencyEvaluator()
+
+    # health checks
+    logger.info("Running health checks...")
+    if not client.health_check():
+        logger.error(f"Model '{model_name}' tidak tersedia. Jalankan: ollama pull {model_name}")
+        sys.exit(1)
+    if not consistency_evaluator.health_check():
+        logger.error("nomic-embed-text tidak tersedia. Jalankan: ollama pull nomic-embed-text")
+        sys.exit(1)
+    logger.info("All health checks passed.\n")
+
+    results = consistency_evaluator.run_and_evaluate(
+        cases=cases,
+        client=client,
+        model_name=model_name,
+    )
+
+    results_path = str(output_prefix) + "_consistency.json"
+    consistency_evaluator.save_results(results, results_path)
+
+    scores = [r.consistency_score for r in results]
+    summary = {
+        "run_id": run_id,
+        "model": model_name,
+        "dataset": "paraphrase",
+        "dimension": "consistency",
+        "template_version": TEMPLATE_VERSION,
+        "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+        "config": {
+            "semantic_threshold": consistency_evaluator.semantic_threshold,
+            "rouge_threshold": consistency_evaluator.rouge_threshold,
+            "embedding_model": consistency_evaluator.embedding_model,
+        },
+        "inference": {
+            "total_cases": len(cases),
+            "total_variants": total_variants,
+        },
+        "consistency": {
+            "evaluated": len(results),
+            "avg_score": round(sum(scores) / len(scores), 4) if scores else 0,
+            "fully_consistent": sum(1 for r in results if r.is_fully_consistent),
+            "cases_with_failure": sum(1 for r in results if r.has_failure),
+        },
+        "failure_case_ids": [r.case_id for r in results if r.has_failure],
+        "results_file": results_path,
+    }
+    summary_path = str(output_prefix) + "_summary.json"
+    with open(summary_path, "w", encoding="utf-8") as f:
+        json.dump(summary, f, indent=2, ensure_ascii=False)
+
+    consistency_evaluator.print_summary(results)
+    logger.info(f"Consistency run complete | outputs saved to {REPORTS_DIR}")
+    return summary
 
 # summary helpers
 def _build_summary(
