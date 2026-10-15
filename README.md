@@ -13,12 +13,12 @@ This is not a benchmark. This is a tool for exposing specific failure modes.
 
 **Four dimensions evaluated:**
 
-| Dimension | Question Asked |
-|-----------|---------------|
-| **Faithfulness** | Can every claim in the answer be traced back to the source document? |
-| **Consistency** | Does the answer remain stable when the question is paraphrased? |
-| **Retrieval Dependency** | Does the answer change when the context is removed or replaced? |
-| **Sensitivity** | How much does a small prompt perturbation affect the output? |
+| Dimension | Question Asked | Where It Runs |
+|-----------|---------------|---------------|
+| **Faithfulness** | Can every claim in the answer be traced back to the source document? | Pipeline (`--dataset clean`, `--dataset distractor`) + HTTP `/evaluate` |
+| **Consistency** | Does the answer remain stable when the question is paraphrased? | Pipeline (`--dataset paraphrase`) |
+| **Retrieval Dependency** | Does the answer change when the context is removed or replaced? | Standalone evaluator (`python -m evaluators.retrieval_dependency`) |
+| **Sensitivity** | How much does a small prompt perturbation affect the output? | Standalone evaluator (`python -m evaluators.sensitivity`) |
 
 ---
 
@@ -44,6 +44,7 @@ This is not a benchmark. This is a tool for exposing specific failure modes.
 | Embeddings | nomic-embed-text via Ollama |
 | Similarity | Cosine similarity (numpy) |
 | Lexical overlap | ROUGE-L (rouge-score) |
+| HTTP service | FastAPI + uvicorn |
 | Config | PyYAML |
 | Reporting | Jinja2 + Matplotlib |
 | Dataset | FastAPI documentation (manually curated) |
@@ -63,7 +64,7 @@ llm-eval-framework/
 │       └── paraphrase_cases.json     # 6 cases with rephrased questions
 │
 ├── evaluators/
-│   ├── faithfulness.py               # Claim extraction + evidence matching (v1.2.1)
+│   ├── faithfulness.py               # Claim extraction + evidence matching (v1.2.2)
 │   ├── consistency.py                # Cross-variant answer comparison (v1.0.0)
 │   ├── retrieval_dependency.py       # Context manipulation detection (v1.0.0)
 │   └── sensitivity.py               # Prompt perturbation robustness (v1.0.0)
@@ -76,7 +77,7 @@ llm-eval-framework/
 │
 ├── reports/
 │   ├── results/                      # JSON outputs (auto-generated, gitignored)
-│   ├── charts/                       # PNG visualizations (gitignored)
+│   ├── charts/                       # PNG visualizations (committed — used by this README)
 │   ├── templates/
 │   │   └── report.html.j2            # Jinja2 HTML report template
 │   ├── visualize.py                  # Chart generator (--chart flag)
@@ -84,14 +85,17 @@ llm-eval-framework/
 │   └── analysis.md                   # Observations and failure cases (real data)
 │
 ├── tests/
-│   ├── test_faithfulness.py          # 26 tests — core evaluator
-│   ├── test_phase1_features.py       # 52 tests — Phase 1 features
+│   ├── test_faithfulness.py          # Core evaluator + short-answer helpers
+│   ├── test_phase1_features.py       # Branch ordering + technical conflicts
 │   ├── test_consistency.py           # Consistency evaluator
+│   ├── test_sensitivity.py           # Sensitivity evaluator
 │   ├── test_model_client.py          # Ollama client
-│   └── test_sensitivity.py           # Sensitivity evaluator
-│                                     # Total: 157 tests, no Ollama required
+│   ├── test_runner.py                # Dataset loader + paraphrase/consistency flow
+│   └── test_api.py                   # HTTP /evaluate service
+│                                     # Total: 184 tests, no Ollama required
 │
 ├── logs/                             # Background run logs + checkpoints
+├── api.py                            # FastAPI wrapper — /health, /evaluate (port 8002)
 ├── config.yaml                       # All thresholds and parameters
 ├── .github/workflows/test.yml        # CI — auto-run on every push
 ├── requirements.txt
@@ -116,28 +120,25 @@ ollama pull nomic-embed-text
 pip install -r requirements.txt
 ```
 
-**3. Download NLTK data (once)**
-```bash
-python -c "import nltk; nltk.download('punkt'); nltk.download('punkt_tab')"
-```
-
 ---
 
 ## Usage
 
-**Smoke test evaluators — no LLM required**
+**Smoke test evaluators — requires only nomic-embed-text (no generation LLM)**
 ```bash
 python -m evaluators.faithfulness
 python -m evaluators.consistency
 python -m evaluators.sensitivity
+python -m evaluators.retrieval_dependency
 ```
 
 **Validate dataset without inference**
 ```bash
 python pipeline/runner.py --model phi3:mini --dataset clean --dry-run
+python pipeline/runner.py --model phi3:mini --dataset paraphrase --dry-run
 ```
 
-**Run faithfulness evaluation**
+**Run faithfulness evaluation** (clean + distractor datasets)
 ```bash
 # Development (1 case, fast)
 python pipeline/runner.py --model phi3:mini --dataset clean --limit 1
@@ -153,10 +154,21 @@ python pipeline/runner.py --model mistral --dataset clean --no-resume
 nohup python pipeline/runner.py --model mistral --dataset clean > logs/run.log 2>&1 &
 ```
 
+**Run consistency evaluation** (paraphrase dataset — queries every question variant)
+```bash
+python pipeline/runner.py --model mistral --dataset paraphrase
+# Note: consistency runs do not use checkpoint/resume — rerunning restarts all cases.
+```
+
 **Run tests**
 ```bash
 pytest tests/ -v
-# Expected: 157 passed
+# Expected: 184 passed
+```
+
+**Run the HTTP service** (requires Ollama for embeddings)
+```bash
+uvicorn api:app --host 0.0.0.0 --port 8002
 ```
 
 **Generate charts**
@@ -184,13 +196,19 @@ All thresholds live in `config.yaml` at the project root:
 
 ```yaml
 thresholds:
-  faithfulness_evidence: 0.75        # claim must match context span
+  faithfulness_evidence: 0.68        # claim must match context span
   insufficient_ctx_validation: 0.65  # ground truth vs context similarity
   consistency_semantic: 0.72         # cross-variant semantic agreement
   consistency_rouge_l: 0.40          # lexical overlap floor
   robustness_sensitivity: 0.85       # perturbation stability threshold
+  retrieval_dependency_change: 0.70  # answer change when context is removed/replaced
   short_answer_max_words: 5          # route to exact match path
   short_answer_char_sim: 0.85        # char similarity fallback
+
+models:
+  default_eval: "mistral"
+  default_dev: "phi3:mini"
+  embedding: "nomic-embed-text"
 
 inference:
   timeout_seconds: 900
@@ -199,12 +217,18 @@ inference:
 
 pipeline:
   checkpoint_dir: "logs/checkpoints"
+  results_dir: "reports/results"
+
+dataset:
+  base_dir: "data/dataset"
 
 technical_term_groups:               # terms that must not be confused
-  - ["put", "patch", "post", "get", "delete"]
+  - ["put", "patch", "post", "get", "delete", "head", "options"]
   - ["200", "201", "204", "400", "401", "403", "404", "422", "500"]
-  - ["true", "false"]
   - ["sync", "async", "await"]
+  - ["required", "optional"]
+  - ["true", "false"]
+  - ["json", "xml", "yaml", "toml"]
 ```
 
 ---
@@ -217,7 +241,7 @@ Three case types, each targeting a different failure mode:
 
 **Distractor cases** (`distractor_cases.json`) — Context is intentionally modified: values swapped, critical information removed, or contradictory information inserted. A model that answers confidently despite a corrupted context is a model that cannot be trusted.
 
-**Paraphrase cases** (`paraphrase_cases.json`) — Same question, different formulation. A model whose answer shifts based on how the question is worded is not reliable for production use.
+**Paraphrase cases** (`paraphrase_cases.json`) — Same question, different formulation. Run via `--dataset paraphrase`: every variant is queried, then the answers are compared with the consistency evaluator. A model whose answer shifts based on how the question is worded is not reliable for production use.
 
 ---
 
@@ -227,18 +251,37 @@ Three case types, each targeting a different failure mode:
 Faithfulness = Supported Claims / Total Claims
 
 where:
-  Supported Claim   = claim with cosine similarity ≥ 0.75 to any context span
+  Supported Claim   = claim with cosine similarity ≥ 0.68 (config: faithfulness_evidence)
   Unsupported Claim = claim with no sufficient evidence in context
 
 Special cases:
-  Short answer (< 5 words) → exact match path (exact → substring → char sim)
-  Fixes blind spot for single-token answers like HTTP methods ("PUT") or
-  file paths ("/files/myfile.txt") where embedding similarity is unreliable.
+  Short answer (< 5 words) → exact match path when a dataset ground_truth exists.
+  The HTTP /evaluate API does not accept ground_truth, so it instead requires
+  the normalized short answer to occur in the supplied context as a whole word
+  or phrase (word-boundary match: "patch" does not match inside "dispatch").
+  Missing matches score 0.0; an absent ground_truth is never treated as an
+  empty-string match, and a punctuation-only answer never matches.
+  This avoids embedding similarity for single-token answers such as HTTP methods.
 
   Technical conflict override → if claim and evidence use different terms
   from the same group (e.g. PUT vs PATCH), similarity is zeroed regardless
   of embedding score. Prevents high topical similarity masking factual error.
 ```
+
+The HTTP service returns the evaluator version that produced each result:
+
+```json
+{
+  "faithfulness_score": 1.0,
+  "failure_mode": "none",
+  "has_failure": false,
+  "supported_claims": 3,
+  "total_claims": 3,
+  "evaluator_version": "1.2.2"
+}
+```
+
+`evaluator_version` comes from the active `FaithfulnessEvaluator.VERSION`.
 
 ---
 
@@ -302,7 +345,7 @@ See [`reports/analysis.md`](reports/analysis.md) for full analysis with raw data
 
 4. **Embedding limitation** — nomic-embed-text treats semantically identical paraphrases as different (similarity: 0.7677). Threshold empirically calibrated to 0.72 for consistency evaluation.
 
-5. **Short answer blind spot** — Fixed in v1.2.1. Single-word answers use exact match path instead of semantic similarity.
+5. **Short answer blind spot** — Fixed in v1.2.2. Single-word answers use an exact match path instead of semantic similarity; the online API path requires a whole-word/phrase match in the supplied context.
 
 6. **Context-faithful is double-edged** — Distractor dataset proves Mistral follows whatever context it receives. Retrieval quality fully determines answer quality.
 
@@ -315,7 +358,8 @@ Hardware : 16GB RAM, no GPU (CPU-only)
 Models   : mistral (eval), phi3:mini (dev), nomic-embed-text (embeddings)
 Latency  : 4-8 minutes per query on CPU
 Eval time: ~80-160 minutes for 10 cases depending on model
-Checkpoints auto-saved per case — safe to interrupt and resume.
+Checkpoints auto-saved per case (clean/distractor) — safe to interrupt and resume;
+consistency runs (paraphrase) do not use checkpoints.
 ```
 
 This is a deliberate tradeoff — reproducibility over speed. Anyone with 16GB RAM can reproduce all results without a GPU or paid API.
