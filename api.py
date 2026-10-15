@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import Optional
+from contextlib import asynccontextmanager
 import logging
 import uuid
 
@@ -9,17 +10,18 @@ from evaluators.faithfulness import FaithfulnessEvaluator
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="LLM Eval Service", version="1.0.0")
-
 # Init evaluator sekali saat startup — berat kalau tiap request
 evaluator = None
 
-@app.on_event("startup")
-def startup():
+@asynccontextmanager
+async def lifespan(app: FastAPI):
     global evaluator
     logger.info("Initializing FaithfulnessEvaluator...")
     evaluator = FaithfulnessEvaluator()
     logger.info("FaithfulnessEvaluator ready")
+    yield
+
+app = FastAPI(title="LLM Eval Service", version="1.0.0", lifespan=lifespan)
 
 class EvalRequest(BaseModel):
     answer: str
@@ -32,6 +34,7 @@ class EvalResponse(BaseModel):
     has_failure: bool
     supported_claims: int
     total_claims: int
+    evaluator_version: str
 
 @app.get("/health")
 def health():
@@ -68,4 +71,5 @@ def evaluate(req: EvalRequest):
         has_failure=result.has_failure,
         supported_claims=result.supported_count,
         total_claims=result.total_claims,
+        evaluator_version=result.evaluator_version,
     )
