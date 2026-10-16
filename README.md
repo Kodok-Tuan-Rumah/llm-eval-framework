@@ -381,6 +381,46 @@ This is a deliberate tradeoff — reproducibility over speed. Anyone with 16GB R
 
 ---
 
+## Reproducibility Pipeline
+
+Langkah terstruktur dari evaluasi → laporan → verifikasi. Semua dijalankan lewat `Makefile`:
+
+```bash
+# 1. Install dependencies (bisa dipasang di Python 3.14+)
+make install
+
+# 2. Evaluasi faithfulness (clean + distractor)
+#    Checkpoint disimpan per case — aman diinterupsi & di-resume.
+make eval
+
+# 3. Evaluasi consistency (paraphrase, opsional)
+make eval-paraphrase
+
+# 4. Generate charts + HTML report
+#    Dibaca sepenuhnya dari reports/results/*.json; gagal keras jika artefak hilang.
+make report
+
+# 5. Regenerate tabel numerik di reports/analysis.md dari artefak
+make render-analysis
+
+# 6. Verifikasi reproducibility (guard strict)
+#    - Jika tidak ada artefak: skip aman (historical)
+#    - Jika ada artefak: cek provenance, threshold, dataset hash, evaluator_version
+make verify
+
+# 7. Jalankan semua test
+make test
+
+# 8. Hapus checkpoints/log (hindari hapus artifacts & charts)
+make clean-artifacts
+```
+
+Tiap artefak hasil (`*_faithfulness.json`, `*_summary.json`, `*_consistency.json`) di-commit beserta blok **provenance** (evaluator_version, git_commit, git_dirty, config_snapshot, dataset.sha256, generated_at). Jika artefak ada, `make verify` akan menolak jika drift terdeteksi (mis. threshold config_snapshot berbeda dengan `config.yaml`).
+
+> Catatan: `avg_latency_seconds` = waktu generasi per case, sementara `total_elapsed_seconds` = waktu seluruh run (generasi + evaluasi). Keduanya beda kuantitas — jangan dibagi satu sama lain.
+
+---
+
 ## What This Is Not
 
 - Not a general-purpose LLM benchmark
