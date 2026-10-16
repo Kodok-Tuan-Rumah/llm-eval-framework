@@ -291,14 +291,21 @@ The HTTP service returns the evaluator version that produced each result:
 
 | Metric | Mistral | phi3:mini |
 |--------|---------|-----------|
-| Avg faithfulness | **56.7%** | 46.7% |
-| Perfect score (1.0) | 5/10 | 4/10 |
-| Failure rate | 50% | 60% |
+| Avg faithfulness | **56.7%** | 46.7% ⚠️ |
+| Perfect score (1.0) | 5/10 | 4/10 ⚠️ |
+| Failure rate | 50% | 60% ⚠️ |
 | False INSUFFICIENT_CTX | 2 | 2 |
-| Avg latency per case | 463.7s | **222.9s** |
-| Total eval time | 160 min | 77.7 min |
+| Avg inference latency / case | 463.7s | **222.9s** |
+| Total wall time (inference + eval) | 160 min | 77.7 min |
 
 **Mistral is more faithful. phi3:mini is 2.1x faster.** Both models over-trigger INSUFFICIENT_CONTEXT at the same rate — a prompt design issue, not a model-specific one.
+
+> ⚠️ **Historical snapshot — not the current evaluator.** These numbers come from February 2026
+> runs, produced *before* the `faithfulness_evidence` threshold was calibrated from 0.75 to 0.68
+> and before the short-answer fix reached v1.2.2. The raw `reports/results/*.json` artifacts are
+> not committed, so the phi3:mini aggregates (and the pre-fix short-answer cases) **cannot be
+> re-verified**. Re-run the pipeline before citing any of these figures; see
+> [`reports/analysis.md`](reports/analysis.md) for the full provenance note.
 
 ### Mistral — Clean vs Distractor Dataset
 
@@ -361,6 +368,14 @@ Eval time: ~80-160 minutes for 10 cases depending on model
 Checkpoints auto-saved per case (clean/distractor) — safe to interrupt and resume;
 consistency runs (paraphrase) do not use checkpoints.
 ```
+
+Reports and charts are **derived artifacts**: `reports/generate_report.py` and
+`reports/visualize.py` read `reports/results/*.json` and refuse to run (with an explicit
+error) if the result files are absent. They never fall back to hand-written numbers.
+
+> Note on timing: `avg_latency_seconds` in a summary measures generation time per case only,
+> while `total_elapsed_seconds` measures the whole run (generation + faithfulness evaluation).
+> They are different quantities — do not divide one by the other.
 
 This is a deliberate tradeoff — reproducibility over speed. Anyone with 16GB RAM can reproduce all results without a GPU or paid API.
 

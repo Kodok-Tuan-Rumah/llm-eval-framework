@@ -269,7 +269,13 @@ def run_evaluation(
         if cached and resume:
             logger.info(f"[{i}/{total}] {case_id} — SKIPPED (checkpoint exists)")
             query_results.append(_dict_to_query_output(cached.get("query_result", {})))
-            faithfulness_results.append(_CheckpointFaithfulness(cached.get("faithfulness_result", {})))
+            faith_result_obj = _checkpoint_to_faithfulness_result(
+                cached.get("faithfulness_result", {}),
+                similarity_threshold=similarity_threshold,
+                embedding_model=config["models"]["embedding"],
+                evaluator_version=FaithfulnessEvaluator.VERSION,
+            )
+            faithfulness_results.append(faith_result_obj)
             continue
 
         logger.info(f"[{i}/{total}] Running | case_id={case_id}")
@@ -322,11 +328,11 @@ def run_evaluation(
     query_output_path = str(output_prefix) + "_queries.json"
     save_query_results(query_results, query_output_path)
 
-    # save faithfulness results
-    real_faith_results = [r for r in faithfulness_results if not isinstance(r, _CheckpointFaithfulness)]
+    # save faithfulness results — merge checkpointed + newly computed (resume-safe)
+    # Bug fix: resumed runs previously dropped checkpointed cases from the output
+    all_faith_results = list(faithfulness_results)
     faith_output_path = str(output_prefix) + "_faithfulness.json"
-    if real_faith_results:
-        faithfulness_evaluator.save_results(real_faith_results, faith_output_path)
+    faithfulness_evaluator.save_results(all_faith_results, faith_output_path)
 
     # build & save summary
     summary = _build_summary(
@@ -375,6 +381,37 @@ class _CheckpointFaithfulness:
     @property
     def question(self) -> str:
         return self._data.get("question", "")
+
+
+def _checkpoint_to_faithfulness_result(
+    data: dict,
+    similarity_threshold: float,
+    embedding_model: str,
+    evaluator_version: str,
+) -> FaithfulnessResult:
+    """Konversi checkpoint dict → FaithfulnessResult (dataclass) untuk merge resume-safe."""
+    return FaithfulnessResult(
+        case_id=data.get("case_id", "unknown"),
+        model="",
+        question=data.get("question", ""),
+        answer=data.get("answer", ""),
+        context_preview="",
+        total_claims=data.get("total_claims", 0) or 0,
+        claims=data.get("claims", []) or [],
+        evidence_matches=data.get("evidence_matches", []) or [],
+        supported_count=data.get("supported_count", 0) or 0,
+        unsupported_count=data.get("unsupported_count", 0) or 0,
+        skipped_count=data.get("skipped_count", 0) or 0,
+        faithfulness_score=data.get("faithfulness_score", 0.0) or 0.0,
+        is_insufficient_context_response=bool(data.get("is_insufficient_context_response", False)),
+        has_failure=bool(data.get("has_failure", False)),
+        failure_cases=data.get("failure_cases", []) or [],
+        similarity_threshold=similarity_threshold,
+        embedding_model=embedding_model,
+        evaluator_version=evaluator_version,
+        timestamp_utc=data.get("timestamp_utc", datetime.now(timezone.utc).isoformat()),
+        evaluation_path=data.get("evaluation_path", "claim_extraction"),
+    )
 
 
 def _dict_to_query_output(d: dict) -> QueryOutput:

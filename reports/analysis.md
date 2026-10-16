@@ -1,10 +1,35 @@
 # Evaluation Analysis Report
-## LLM Faithfulness & Consistency Framework — v1.1
+## LLM Faithfulness & Consistency Framework — v1.2.2
 
 **Models evaluated:** phi3:mini (development), mistral (primary eval)
 **Dataset:** FastAPI documentation — 10 clean cases, 5 distractor cases, 6 paraphrase cases
 **Infrastructure:** CPU-only, 16GB RAM, Ollama local inference
 **Date:** February 2026
+
+---
+
+> ## ⚠️ Status Reproduksibilitas — Baca Dulu
+>
+> Seluruh angka di bawah berasal dari run **Februari 2026** (run ID `20260221_074512`
+> untuk mistral/clean, `20260221_103528` untuk mistral/distractor). Run tersebut
+> dijalankan **sebelum** dua perubahan yang memengaruhi skor:
+>
+> 1. Kalibrasi threshold `faithfulness_evidence` dari **0.75 → 0.68** (commit `c430562`, Maret 2026).
+> 2. Perbaikan *short answer path* hingga **v1.2.2** (commit `581e2ca`) — clean_008/clean_009
+>    pada tabel di bawah masih mencerminkan evaluator pra-perbaikan (skor 0.0).
+>
+> **Artefak mentah (`reports/results/*.json`) belum di-commit**, sehingga angka-angka ini
+> **belum dapat diverifikasi ulang** dan harus diperlakukan sebagai *historical snapshot*,
+> bukan hasil evaluator v1.2.2 saat ini. Untuk mendapatkan angka yang sah, jalankan ulang:
+>
+> ```bash
+> python -m pipeline.runner --model mistral --dataset clean
+> python -m pipeline.runner --model mistral --dataset distractor
+> python -m pipeline.runner --model phi3:mini --dataset clean
+> ```
+>
+> Setelah run ulang, `reports/generate_report.py` dan `reports/analysis.md` harus
+> diperbarui dari artefak — bukan diketik manual.
 
 ---
 
@@ -20,9 +45,15 @@ Laporan ini mendokumentasikan observasi empiris dari menjalankan framework terha
 
 ## Hasil Evaluasi Lengkap
 
+<!-- GENERATED:RESULTS:BEGIN -->
+
+# Generated Results Section (rekam dari artefak saat render-analysis dijalankan)
+
+<!-- GENERATED:RESULTS:END -->
+
 ### Mistral — Clean Dataset
 
-**Run ID:** 20260221_074512 | **Total waktu:** 160 menit | **Timeout:** 900s
+**Run ID:** 20260221_074512 | **Total wall time:** 160 menit (inference + evaluasi) | **Timeout:** 900s
 
 | Case | Score | Keterangan |
 |------|-------|------------|
@@ -61,12 +92,21 @@ Laporan ini mendokumentasikan observasi empiris dari menjalankan framework terha
 
 | Metrik | Mistral | phi3:mini |
 |--------|---------|-----------|
-| Avg faithfulness | **56.7%** | 46.7% |
-| Perfect score (1.0) | 5/10 | 4/10 |
-| Failure rate | 50% | 60% |
+| Avg faithfulness | **56.7%** | 46.7% ⚠️ |
+| Perfect score (1.0) | 5/10 | 4/10 ⚠️ |
+| Failure rate | 50% | 60% ⚠️ |
 | False INSUFFICIENT_CTX | 2 | 2 |
-| Avg latency per case | 463.7s | **222.9s** |
-| Total eval time | 160 min | 77.7 min |
+| Avg inference latency / case | 463.7s | **222.9s** |
+| Total wall time (inference + eval) | 160 min | 77.7 min |
+
+> ⚠️ **phi3:mini:** per-case artifacts untuk model ini tidak tersimpan, sehingga agregat
+> 46.7% / 4-of-10 / 60% **tidak dapat diverifikasi ulang**. Angka diambil dari run of record
+> (commit `3e06684`). Jangan kutip angka ini tanpa menjalankan ulang.
+>
+> **Catatan latency:** kolom *avg inference latency* hanya menghitung waktu generasi per case
+> (463.7s × 10 ≈ 77 menit), sedangkan kolom *total wall time* mencakup inference + evaluasi
+> (embedding claim, dsb.), sehingga tidak bisa diturunkan dari rata-rata latency. Kedua kolom
+> mengukur hal yang berbeda dan bukan kontradiksi.
 
 ---
 
@@ -99,7 +139,7 @@ Ditambahkan validasi dua tahap:
 2. Jika similarity ≥ 0.65, evidence ada → FALSE_INSUFFICIENT_CONTEXT → score 0.0.
 
 **Threshold:**
-- Evidence matching: **0.75** (klaim panjang)
+- Evidence matching: **0.68** (klaim panjang; *run Februari 2026 di atas dihasilkan pada 0.75 — lihat catatan reproduksibilitas di atas*)
 - Insufficient validation: **0.65** (lebih rendah karena ground_truth lebih ringkas dari span konteks)
 
 **Implikasi:**
@@ -232,7 +272,7 @@ Implementasi baru — perlu lebih banyak data untuk mengkonfirmasi threshold yan
 
 | Threshold | Nilai | Tujuan |
 |-----------|-------|--------|
-| Faithfulness evidence matching | 0.75 | Klaim harus kuat match ke span konteks |
+| Faithfulness evidence matching | 0.68 | Klaim harus kuat match ke span konteks (dikalibrasi dari 0.75) |
 | Insufficient context validation | 0.65 | Ground truth lebih ringkas dari span konteks |
 | Consistency semantic | 0.72 | Balance deteksi inkonsistensi vs variasi paraphrase |
 | Consistency ROUGE-L | 0.40 | Paraphrase alami punya word overlap rendah |
