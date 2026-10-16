@@ -4,12 +4,28 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
+import yaml
 from pathlib import Path
 
 REPORTS_DIR = Path(__file__).parent
 RESULTS_DIR = REPORTS_DIR / "results"
 CHARTS_DIR  = REPORTS_DIR / "charts"
+CONFIG_PATH = REPORTS_DIR.parent / "config.yaml"
 CHARTS_DIR.mkdir(exist_ok=True)
+
+
+def _load_faithfulness_threshold() -> float:
+    """Baca threshold dari config.yaml supaya garis chart tidak pernah drift."""
+    try:
+        cfg = yaml.safe_load(CONFIG_PATH.read_text())
+        return float(cfg["thresholds"]["faithfulness_evidence"])
+    except Exception as e:
+        raise SystemExit(
+            f"[error] Tidak bisa membaca faithfulness_evidence dari {CONFIG_PATH}: {e}"
+        )
+
+
+FAITH_THRESHOLD = _load_faithfulness_threshold()
 
 # Color palette 
 COLOR_PERFECT    = "#2ecc71"
@@ -73,7 +89,7 @@ def chart_clean(results):
     _add_value_labels(ax, bars, scores)
 
     avg = sum(scores) / len(scores)
-    ax.axhline(y=0.75, color="#9b59b6", linestyle="--", linewidth=1.5, alpha=0.8, label="Threshold (0.75)")
+    ax.axhline(y=FAITH_THRESHOLD, color="#9b59b6", linestyle="--", linewidth=1.5, alpha=0.8, label=f"Threshold ({FAITH_THRESHOLD})")
     ax.axhline(y=avg,  color="#1abc9c", linestyle="-.", linewidth=1.5, alpha=0.9, label=f"Avg ({avg:.3f})")
     ax.legend(facecolor="#2c3e50", edgecolor="#7f8c8d", labelcolor=COLOR_TEXT, fontsize=9)
     ax.set_ylim(0, 1.2)
@@ -251,7 +267,7 @@ def chart_model_comparison(mistral_results: list, phi3_results: list):
         color=COLOR_TEXT, fontsize=12, fontweight="bold",
     )
     ax.legend(facecolor="#2c3e50", edgecolor="#7f8c8d", labelcolor=COLOR_TEXT, fontsize=10)
-    ax.axhline(y=0.75, color="#9b59b6", linestyle="--", linewidth=1, alpha=0.5, label="Threshold")
+    ax.axhline(y=FAITH_THRESHOLD, color="#9b59b6", linestyle="--", linewidth=1, alpha=0.5, label="Threshold")
 
     plt.tight_layout()
     out = str(CHARTS_DIR / "model_comparison.png")
@@ -304,8 +320,8 @@ def chart_per_case_comparison(mistral_results: list, phi3_results: list):
                 color=COLOR_PHI3, fontsize=8, fontweight="bold")
 
     # Threshold line
-    ax.axhline(y=0.75, color="#9b59b6", linestyle="--",
-               linewidth=1.5, alpha=0.7, label="Threshold (0.75)")
+    ax.axhline(y=FAITH_THRESHOLD, color="#9b59b6", linestyle="--",
+               linewidth=1.5, alpha=0.7, label=f"Threshold ({FAITH_THRESHOLD})")
 
     # Avg lines
     m_avg = sum(m_scores) / len(m_scores)

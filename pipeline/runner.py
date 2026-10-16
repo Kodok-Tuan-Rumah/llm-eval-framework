@@ -12,6 +12,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 from pipeline.model_client import OllamaClient, save_query_results, QueryOutput
 from pipeline.prompt_templates import PromptTemplate, TEMPLATE_VERSION
 from pipeline.config_loader import config
+from pipeline.provenance import build_provenance
 from evaluators.faithfulness import FaithfulnessEvaluator
 from evaluators.consistency import ConsistencyEvaluator
 
@@ -545,7 +546,7 @@ def run_consistency_evaluation(
     summary = {
         "run_id": run_id,
         "model": model_name,
-        "dataset": "paraphrase",
+        "dataset": dataset_name,
         "dimension": "consistency",
         "template_version": TEMPLATE_VERSION,
         "timestamp_utc": datetime.now(timezone.utc).isoformat(),
@@ -565,7 +566,12 @@ def run_consistency_evaluation(
             "cases_with_failure": sum(1 for r in results if r.has_failure),
         },
         "failure_case_ids": [r.case_id for r in results if r.has_failure],
-        "results_file": results_path,
+        "results_file": Path(results_path).name,
+        "provenance": build_provenance(
+            evaluator_version=consistency_evaluator.VERSION,
+            dataset_name="paraphrase",
+            dataset_path=DATASET_FILES.get("paraphrase"),
+        ),
     }
     summary_path = str(output_prefix) + "_summary.json"
     with open(summary_path, "w", encoding="utf-8") as f:
@@ -594,6 +600,7 @@ def _build_summary(
         "model": model_name,
         "dataset": dataset_name,
         "template_version": TEMPLATE_VERSION,
+        "evaluator_version": FaithfulnessEvaluator.VERSION,
         "timestamp_utc": datetime.now(timezone.utc).isoformat(),
         "config": {
             "similarity_threshold": similarity_threshold,
@@ -619,6 +626,11 @@ def _build_summary(
             ) if faithfulness_results else 0,
         },
         "failure_case_ids": [r.case_id for r in failures],
+        "provenance": build_provenance(
+            evaluator_version=FaithfulnessEvaluator.VERSION,
+            dataset_name=dataset_name,
+            dataset_path=DATASET_FILES.get(dataset_name) if dataset_name in DATASET_FILES else None,
+        ),
     }
 
 def _print_summary(summary: dict, faithfulness_results: list) -> None:

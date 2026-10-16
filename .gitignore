@@ -31,9 +31,12 @@ logs/
 # Environment variables
 .env
 
-# Reports — generated files, tidak di-commit
+# Reports — generated files
 # (reports/charts/ sengaja TIDAK di-ignore: PNG-nya di-commit untuk README)
-reports/results/
+# reports/results/ sebelumnya di-ignore (artefak harus di-commit agar bisa diverifikasi ulang)
+# Namun kita commit summary/faithfulness/consistency; log berat tetap di-ignore
+reports/results/*
+!reports/results/README.txt
 reports/report.html
 
 # Checkpoints — resume state, tidak di-commit
