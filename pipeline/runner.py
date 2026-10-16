@@ -13,7 +13,7 @@ from pipeline.model_client import OllamaClient, save_query_results, QueryOutput
 from pipeline.prompt_templates import PromptTemplate, TEMPLATE_VERSION
 from pipeline.config_loader import config
 from pipeline.provenance import build_provenance
-from evaluators.faithfulness import FaithfulnessEvaluator
+from evaluators.faithfulness import FaithfulnessEvaluator, FaithfulnessResult
 from evaluators.consistency import ConsistencyEvaluator
 
 logging.basicConfig(
