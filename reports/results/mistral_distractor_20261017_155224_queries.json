@@ -1,0 +1,57 @@
+[
+  {
+    "case_id": "distractor_001",
+    "model": "mistral",
+    "question": "What are the values of the `skip` and `limit` query parameters in the example URL shown in the documentation?",
+    "context_length_chars": 682,
+    "answer": "The values of the `skip` and `limit` query parameters in the example URL are 5 and 100 respectively.",
+    "latency_seconds": 42.497,
+    "timestamp_utc": "2026-10-17T15:53:06.574847+00:00",
+    "success": true,
+    "error_message": null
+  },
+  {
+    "case_id": "distractor_002",
+    "model": "mistral",
+    "question": "According to the documentation provided, what HTTP method is used to update data?",
+    "context_length_chars": 332,
+    "answer": "POST",
+    "latency_seconds": 62.923,
+    "timestamp_utc": "2026-10-17T15:53:27.003382+00:00",
+    "success": true,
+    "error_message": null
+  },
+  {
+    "case_id": "distractor_003",
+    "model": "mistral",
+    "question": "How do you make a query parameter required in FastAPI?",
+    "context_length_chars": 183,
+    "answer": "In FastAPI, you can make a query parameter required by using the `Query` parameter decorator with the `Depends` utility to create a function that validates the presence of the query parameter. Here's an example:\n\n```python\nfrom fastapi import FastAPI, Depends, Query\n\napp = FastAPI()\n\ndef required_query_param(query: Query):\n    if not query:\n        raise ValueError(\"Query parameter is required\")\n    return query\n\n@app.get(\"/items/\")\nasync def read_items(query: str = Depends(required_query_param)):\n    # Your code here\n```\n\nIn this example, the `query` parameter is required, and if it's not provided, a `ValueError` will be raised.",
+    "latency_seconds": 130.121,
+    "timestamp_utc": "2026-10-17T15:54:34.203507+00:00",
+    "success": true,
+    "error_message": null
+  },
+  {
+    "case_id": "distractor_004",
+    "model": "mistral",
+    "question": "What syntax is used after the colon in the path parameter declaration to indicate that it should match any path?",
+    "context_length_chars": 438,
+    "answer": ":filepath",
+    "latency_seconds": 107.937,
+    "timestamp_utc": "2026-10-17T15:54:56.125733+00:00",
+    "success": true,
+    "error_message": null
+  },
+  {
+    "case_id": "distractor_005",
+    "model": "mistral",
+    "question": "What are the three effects of adding `max_length=50` to a `Query()` declaration in FastAPI?",
+    "context_length_chars": 277,
+    "answer": "1. Validation of the string data.\n2. Showing a clear error when the data exceeds 50 characters.\n3. Caching the parameter value for performance.",
+    "latency_seconds": 106.868,
+    "timestamp_utc": "2026-10-17T15:55:13.872810+00:00",
+    "success": true,
+    "error_message": null
+  }
+]

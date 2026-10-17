@@ -47,7 +47,57 @@ Laporan ini mendokumentasikan observasi empiris dari menjalankan framework terha
 
 <!-- GENERATED:RESULTS:BEGIN -->
 
-# Generated Results Section (rekam dari artefak saat render-analysis dijalankan)
+### Mistral — Clean Dataset
+
+**Run ID:** 20261017_154416
+| Case | Score | Keterangan |
+|------|-------|------------|
+| clean_001 | 0.0 | FALSE INSUFFICIENT_CONTEXT: Model refused to answer despite evidence in context (similarity=0.8672 >= threshold=0.65). Model over-triggered escape hatch or failed to read context correctly. |
+| clean_002 | 1.0 |  |
+| clean_003 | 0.9 |  |
+| clean_004 | 0.0 | FALSE INSUFFICIENT_CONTEXT: Model refused to answer despite evidence in context (similarity=0.9710 >= threshold=0.65). Model over-triggered escape hatch or failed to read context correctly. |
+| clean_005 | 1.0 |  |
+| clean_006 | 0.3333 | Semantically close (score=0.6465) but below threshold. Possible paraphrase or partial evidence — review manually. |
+| clean_007 | 1.0 |  |
+| clean_008 | 0.9 |  |
+| clean_009 | 0.9 |  |
+| clean_010 | 1.0 |  |
+
+**Avg faithfulness: 70.3% | Perfect: 4/10 | Failure rate: 30.0% | False INSUF_CTX: 2**
+
+---
+### Mistral — Distractor Dataset
+
+**Run ID:** 20261017_155224
+| Case | Score | Keterangan |
+|------|-------|------------|
+| distractor_001 | 1.0 |  |
+| distractor_002 | 1.0 |  |
+| distractor_003 | 0.0909 | Technical term conflict detected (score=0.0). Claim and evidence use different terms from the same technical group (e.g. PUT vs PATCH). Semantically similar but factually incorrect. |
+| distractor_004 | 1.0 |  |
+| distractor_005 | 0.3333 | Semantically close (score=0.6596) but below threshold. Possible paraphrase or partial evidence — review manually. |
+
+**Avg faithfulness: 68.5% | Perfect: 3/5 | Failure rate: 40.0%**
+
+---
+### Model Comparison — Mistral vs phi3:mini (Clean Dataset)
+
+| Metrik | Mistral | phi3:mini |
+|--------|---------|-----------|
+| Avg faithfulness | **70.3%** | 76.2% |
+| Perfect score (1.0) | 4/10 | 5/10 |
+| Failure rate | 30.0% | 30.0% |
+| False INSUFFICIENT_CTX | 2 | 1 |
+| Avg inference latency / case | 87s | **67s** |
+---
+### Clean vs Distractor Comparison
+
+| Metrik | Clean Dataset | Distractor Dataset |
+|--------|--------------|-------------------|
+| Avg faithfulness | 70.3% | 68.5% |
+| Perfect score | 4/10 | 3/5 |
+| Failure rate | 30.0% | 40.0% |
+---
 
 <!-- GENERATED:RESULTS:END -->
 

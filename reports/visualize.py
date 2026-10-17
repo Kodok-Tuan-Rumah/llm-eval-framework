@@ -74,7 +74,7 @@ def _add_value_labels(ax, bars, scores, fmt="{:.2f}", offset=0.02, fontsize=10):
         )
         
 # Chart 1
-def chart_clean(results):
+def chart_clean(results, model_name: str = "Unknown"):
     if not results:
         return
     fig, ax = plt.subplots(figsize=(12, 6))
@@ -94,7 +94,7 @@ def chart_clean(results):
     ax.legend(facecolor="#2c3e50", edgecolor="#7f8c8d", labelcolor=COLOR_TEXT, fontsize=9)
     ax.set_ylim(0, 1.2)
     ax.set_title(
-        f"Faithfulness — Mistral, Clean Dataset\n"
+        f"Faithfulness — {model_name}, Clean Dataset\n"
         f"Avg: {avg:.3f} | Perfect: {sum(1 for s in scores if s==1.0)}/{len(scores)}",
         color=COLOR_TEXT, fontsize=13, fontweight="bold",
     )
@@ -110,7 +110,7 @@ def chart_clean(results):
 
 
 # Chart 2 
-def chart_distractor(results):
+def chart_distractor(results, model_name: str = "Unknown"):
     if not results:
         return
     fig, ax = plt.subplots(figsize=(10, 6))
@@ -129,7 +129,7 @@ def chart_distractor(results):
     ax.legend(facecolor="#2c3e50", edgecolor="#7f8c8d", labelcolor=COLOR_TEXT, fontsize=9)
     ax.set_ylim(0, 1.2)
     ax.set_title(
-        f"Faithfulness — Mistral, Distractor Dataset\n"
+        f"Faithfulness — {model_name}, Distractor Dataset\n"
         f"Avg: {avg:.3f} | Manipulated context",
         color=COLOR_TEXT, fontsize=13, fontweight="bold",
     )
@@ -144,7 +144,7 @@ def chart_distractor(results):
 
 
 # Chart 3
-def chart_comparison(clean, distractor):
+def chart_comparison(clean, distractor, model_name: str = "Unknown"):
     if not clean or not distractor:
         return
     fig, axes = plt.subplots(1, 2, figsize=(14, 6))
@@ -185,7 +185,7 @@ def chart_comparison(clean, distractor):
         ax.set_ylim(0, max(counts) + 2)
 
     fig.suptitle(
-        "Mistral Faithfulness — Clean vs Distractor",
+        f"{model_name} Faithfulness — Clean vs Distractor",
         color=COLOR_TEXT, fontsize=14, fontweight="bold",
     )
     plt.tight_layout()
@@ -198,9 +198,10 @@ def chart_comparison(clean, distractor):
 
 # Chart 4 
 
-def chart_model_comparison(mistral_results: list, phi3_results: list):
+def chart_model_comparison(mistral_results: list, phi3_results: list,
+                           model_a_name: str = "Model A", model_b_name: str = "Model B"):
     if not mistral_results or not phi3_results:
-        print("  [skip] chart_model_comparison: butuh data mistral + phi3:mini")
+        print("  [skip] chart_model_comparison: butuh data kedua model")
         return
 
     def _compute_metrics(results: list) -> dict:
@@ -235,10 +236,10 @@ def chart_model_comparison(mistral_results: list, phi3_results: list):
     _style_ax(ax)
 
     bars_m = ax.bar(x - width/2, mistral_vals, width,
-                    label=f"mistral (n={m['n']})",
+                    label=f"{model_a_name} (n={m['n']})",
                     color=COLOR_MISTRAL, edgecolor="#2c3e50", linewidth=0.8)
     bars_p = ax.bar(x + width/2, phi3_vals, width,
-                    label=f"phi3:mini (n={p['n']})",
+                    label=f"{model_b_name} (n={p['n']})",
                     color=COLOR_PHI3, edgecolor="#2c3e50", linewidth=0.8)
     
     for bar, val in zip(bars_m, mistral_vals):
@@ -262,7 +263,7 @@ def chart_model_comparison(mistral_results: list, phi3_results: list):
     ax.set_ylim(0, 1.25)
     ax.set_ylabel("Score / Rate", color=COLOR_TEXT)
     ax.set_title(
-        "Model Comparison: Mistral vs phi3:mini — Clean Dataset\n"
+        f"Model Comparison: {model_a_name} vs {model_b_name} — Clean Dataset\n"
         "★ = better performer per metric  |  Lower is better for Failure & False INSUF_CTX",
         color=COLOR_TEXT, fontsize=12, fontweight="bold",
     )
@@ -278,9 +279,10 @@ def chart_model_comparison(mistral_results: list, phi3_results: list):
 
 # Chart 5 
 
-def chart_per_case_comparison(mistral_results: list, phi3_results: list):
+def chart_per_case_comparison(mistral_results: list, phi3_results: list,
+                              model_a_name: str = "Model A", model_b_name: str = "Model B"):
     if not mistral_results or not phi3_results:
-        print("  [skip] chart_per_case_comparison: butuh data mistral + phi3:mini")
+        print("  [skip] chart_per_case_comparison: butuh data kedua model")
         return
     
     mistral_map = {r["case_id"]: r["faithfulness_score"] for r in mistral_results}
@@ -301,17 +303,17 @@ def chart_per_case_comparison(mistral_results: list, phi3_results: list):
 
     # Line plot
     ax.plot(x, m_scores, color=COLOR_MISTRAL, linewidth=2,
-            marker="o", markersize=8, label="mistral", zorder=3)
+            marker="o", markersize=8, label=model_a_name, zorder=3)
     ax.plot(x, p_scores, color=COLOR_PHI3, linewidth=2,
-            marker="s", markersize=8, label="phi3:mini", zorder=3)
+            marker="s", markersize=8, label=model_b_name, zorder=3)
 
     # Shading
     ax.fill_between(x, m_scores, p_scores,
                     where=[m > p for m, p in zip(m_scores, p_scores)],
-                    alpha=0.15, color=COLOR_MISTRAL, label="mistral leads")
+                    alpha=0.15, color=COLOR_MISTRAL, label=f"{model_a_name} leads")
     ax.fill_between(x, m_scores, p_scores,
                     where=[p >= m for m, p in zip(m_scores, p_scores)],
-                    alpha=0.15, color=COLOR_PHI3, label="phi3:mini leads")
+                    alpha=0.15, color=COLOR_PHI3, label=f"{model_b_name} leads")
     
     for i, (ms, ps) in enumerate(zip(m_scores, p_scores)):
         ax.text(i, ms + 0.04, f"{ms:.2f}", ha="center", va="bottom",
@@ -327,9 +329,9 @@ def chart_per_case_comparison(mistral_results: list, phi3_results: list):
     m_avg = sum(m_scores) / len(m_scores)
     p_avg = sum(p_scores) / len(p_scores)
     ax.axhline(y=m_avg, color=COLOR_MISTRAL, linestyle="-.",
-               linewidth=1, alpha=0.6, label=f"mistral avg ({m_avg:.3f})")
+               linewidth=1, alpha=0.6, label=f"{model_a_name} avg ({m_avg:.3f})")
     ax.axhline(y=p_avg, color=COLOR_PHI3, linestyle="-.",
-               linewidth=1, alpha=0.6, label=f"phi3:mini avg ({p_avg:.3f})")
+               linewidth=1, alpha=0.6, label=f"{model_b_name} avg ({p_avg:.3f})")
 
     ax.set_xticks(x)
     ax.set_xticklabels(common_ids, rotation=45, ha="right", color=COLOR_TEXT, fontsize=9)
@@ -337,8 +339,8 @@ def chart_per_case_comparison(mistral_results: list, phi3_results: list):
     ax.set_ylabel("Faithfulness Score", color=COLOR_TEXT)
     ax.set_xlabel("Case ID", color=COLOR_TEXT)
     ax.set_title(
-        "Per-Case Faithfulness: Mistral vs phi3:mini — Clean Dataset\n"
-        f"Mistral avg: {m_avg:.3f} | phi3:mini avg: {p_avg:.3f} | "
+        f"Per-Case Faithfulness: {model_a_name} vs {model_b_name} — Clean Dataset\n"
+        f"{model_a_name} avg: {m_avg:.3f} | {model_b_name} avg: {p_avg:.3f} | "
         f"{len(common_ids)} common cases",
         color=COLOR_TEXT, fontsize=12, fontweight="bold",
     )
@@ -353,7 +355,8 @@ def chart_per_case_comparison(mistral_results: list, phi3_results: list):
 
 
 # Chart 6 
-def chart_latency_comparison(mistral_summary: dict, phi3_summary: dict):
+def chart_latency_comparison(mistral_summary: dict, phi3_summary: dict,
+                             model_a_name: str = "Model A", model_b_name: str = "Model B"):
     m_lat = mistral_summary.get("inference", {}).get("avg_latency_seconds")
     p_lat = phi3_summary.get("inference", {}).get("avg_latency_seconds")
 
@@ -365,7 +368,7 @@ def chart_latency_comparison(mistral_summary: dict, phi3_summary: dict):
     fig.patch.set_facecolor(COLOR_BG)
     _style_ax(ax)
 
-    models   = ["mistral", "phi3:mini"]
+    models   = [model_a_name, model_b_name]
     latencies = [m_lat, p_lat]
     colors   = [COLOR_MISTRAL, COLOR_PHI3]
 
@@ -381,7 +384,7 @@ def chart_latency_comparison(mistral_summary: dict, phi3_summary: dict):
     # Speedup annotation
     speedup = m_lat / p_lat
     ax.annotate(
-        f"phi3:mini is {speedup:.1f}x faster",
+        f"{model_b_name} is {speedup:.1f}x faster",
         xy=(1, p_lat), xytext=(0.5, max(latencies) * 0.85),
         arrowprops=dict(arrowstyle="->", color=COLOR_TEXT, lw=1.5),
         color="#f1c40f", fontsize=11, fontweight="bold", ha="center",
@@ -389,7 +392,7 @@ def chart_latency_comparison(mistral_summary: dict, phi3_summary: dict):
 
     ax.set_ylabel("Avg Latency per Case (seconds)", color=COLOR_TEXT)
     ax.set_title(
-        "Inference Latency: Mistral vs phi3:mini\nCPU-only, 16GB RAM",
+        f"Inference Latency: {model_a_name} vs {model_b_name}\nCPU-only, 16GB RAM",
         color=COLOR_TEXT, fontsize=12, fontweight="bold",
     )
     ax.set_ylim(0, max(latencies) * 1.3)
@@ -435,18 +438,21 @@ if __name__ == "__main__":
     print("\n[Generating charts...]")
 
     if run_existing:
-        chart_clean(mistral_clean)
-        chart_distractor(mistral_distractor)
-        chart_comparison(mistral_clean, mistral_distractor)
+        chart_clean(mistral_clean, model_name="mistral")
+        chart_distractor(mistral_distractor, model_name="mistral")
+        chart_comparison(mistral_clean, mistral_distractor, model_name="mistral")
 
     if run_model_compare:
-        chart_model_comparison(mistral_clean, phi3_clean)
+        chart_model_comparison(mistral_clean, phi3_clean,
+                               model_a_name="mistral", model_b_name="phi3:mini")
 
     if run_per_case:
-        chart_per_case_comparison(mistral_clean, phi3_clean)
+        chart_per_case_comparison(mistral_clean, phi3_clean,
+                                  model_a_name="mistral", model_b_name="phi3:mini")
 
     if run_latency:
-        chart_latency_comparison(mistral_summary, phi3_summary)
+        chart_latency_comparison(mistral_summary, phi3_summary,
+                                 model_a_name="mistral", model_b_name="phi3:mini")
 
     print(f"\nCharts saved to: reports/charts/")
     print("=" * 55)

@@ -1,0 +1,397 @@
+[
+  {
+    "case_id": "clean_001",
+    "model": "mistral",
+    "question": "What are the default values of the `skip` and `limit` query parameters in the example URL http://127.0.0.1:8000/items/?skip=0&limit=10?",
+    "answer": "INSUFFICIENT_CONTEXT. The default values of the `skip` and `limit` query parameters are not specified in the provided context.",
+    "context_preview": "When you declare other function parameters that are not part of the path parameters, they are automatically interpreted as query parameters. The query is the set of key-value pairs that go after the ?",
+    "total_claims": 0,
+    "claims": [],
+    "evidence_matches": [],
+    "supported_count": 0,
+    "unsupported_count": 1,
+    "skipped_count": 0,
+    "faithfulness_score": 0.0,
+    "is_insufficient_context_response": true,
+    "has_failure": true,
+    "failure_cases": [
+      {
+        "claim_id": "clean_001_false_insufficient",
+        "unsupported_claim": "Model claimed INSUFFICIENT_CONTEXT",
+        "best_match_in_context": "Evidence exists (similarity=0.8672)",
+        "similarity_score": 0.8671994209289551,
+        "threshold": 0.68,
+        "technical_conflict": false,
+        "diagnosis": "FALSE INSUFFICIENT_CONTEXT: Model refused to answer despite evidence in context (similarity=0.8672 >= threshold=0.65). Model over-triggered escape hatch or failed to read context correctly."
+      }
+    ],
+    "similarity_threshold": 0.68,
+    "embedding_model": "nomic-embed-text",
+    "evaluator_version": "1.2.2",
+    "timestamp_utc": "2026-10-17T15:45:37.195740+00:00",
+    "evaluation_path": "false_insufficient_context"
+  },
+  {
+    "case_id": "clean_002",
+    "model": "mistral",
+    "question": "What happens to query parameter values that are declared with Python types in FastAPI?",
+    "answer": "They are converted to that type and validated against it.",
+    "context_preview": "When you declare other function parameters that are not part of the path parameters, they are automatically interpreted as query parameters. As they are part of the URL, they are naturally strings. Bu...",
+    "total_claims": 1,
+    "claims": [
+      {
+        "claim_id": "clean_002_claim_01",
+        "text": "They are converted to that type and validated against it.",
+        "source_answer": "They are converted to that type and validated against it."
+      }
+    ],
+    "evidence_matches": [
+      {
+        "claim_id": "clean_002_claim_01",
+        "claim_text": "They are converted to that type and validated against it.",
+        "best_evidence_span": "But when you declare them with Python types (in the example above, as int), they are converted to that type and validated against it.",
+        "similarity_score": 0.7518,
+        "classification": "SUPPORTED",
+        "threshold_used": 0.68,
+        "technical_conflict": false
+      }
+    ],
+    "supported_count": 1,
+    "unsupported_count": 0,
+    "skipped_count": 0,
+    "faithfulness_score": 1.0,
+    "is_insufficient_context_response": false,
+    "has_failure": false,
+    "failure_cases": [],
+    "similarity_threshold": 0.68,
+    "embedding_model": "nomic-embed-text",
+    "evaluator_version": "1.2.2",
+    "timestamp_utc": "2026-10-17T15:46:01.155514+00:00",
+    "evaluation_path": "claim_extraction"
+  },
+  {
+    "case_id": "clean_003",
+    "model": "mistral",
+    "question": "If a path parameter `item_id` is declared as `int` in FastAPI, what type will the function receive when the URL contains `/items/3`?",
+    "answer": "Python int",
+    "context_preview": "You can declare the type of a path parameter in the function, using standard Python type annotations. In this case, item_id is declared to be an int. This will give you editor support inside of your f...",
+    "total_claims": 1,
+    "claims": [],
+    "evidence_matches": [],
+    "supported_count": 1,
+    "unsupported_count": 0,
+    "skipped_count": 0,
+    "faithfulness_score": 0.9,
+    "is_insufficient_context_response": false,
+    "has_failure": false,
+    "failure_cases": [],
+    "similarity_threshold": 0.68,
+    "embedding_model": "nomic-embed-text",
+    "evaluator_version": "1.2.2",
+    "timestamp_utc": "2026-10-17T15:46:24.544371+00:00",
+    "evaluation_path": "short_answer_exact_match"
+  },
+  {
+    "case_id": "clean_004",
+    "model": "mistral",
+    "question": "Does FastAPI require path parameters and query parameters to be declared in a specific order in the function signature?",
+    "answer": "INSUFFICIENT_CONTEXT",
+    "context_preview": "You can declare multiple path parameters and query parameters at the same time, FastAPI knows which is which. And you don't have to declare them in any specific order. FastAPI will detect the paramete",
+    "total_claims": 0,
+    "claims": [],
+    "evidence_matches": [],
+    "supported_count": 0,
+    "unsupported_count": 1,
+    "skipped_count": 0,
+    "faithfulness_score": 0.0,
+    "is_insufficient_context_response": true,
+    "has_failure": true,
+    "failure_cases": [
+      {
+        "claim_id": "clean_004_false_insufficient",
+        "unsupported_claim": "Model claimed INSUFFICIENT_CONTEXT",
+        "best_match_in_context": "Evidence exists (similarity=0.9710)",
+        "similarity_score": 0.971027672290802,
+        "threshold": 0.68,
+        "technical_conflict": false,
+        "diagnosis": "FALSE INSUFFICIENT_CONTEXT: Model refused to answer despite evidence in context (similarity=0.9710 >= threshold=0.65). Model over-triggered escape hatch or failed to read context correctly."
+      }
+    ],
+    "similarity_threshold": 0.68,
+    "embedding_model": "nomic-embed-text",
+    "evaluator_version": "1.2.2",
+    "timestamp_utc": "2026-10-17T15:46:45.747812+00:00",
+    "evaluation_path": "false_insufficient_context"
+  },
+  {
+    "case_id": "clean_005",
+    "model": "mistral",
+    "question": "How do you make a query parameter required in FastAPI?",
+    "answer": "Not declaring any default value for a query parameter makes it required in FastAPI.",
+    "context_preview": "As query parameters are not a fixed part of a path, they can be optional and can have default values. But when you want to make a query parameter required, you can just not declare any default value.",
+    "total_claims": 1,
+    "claims": [
+      {
+        "claim_id": "clean_005_claim_01",
+        "text": "Not declaring any default value for a query parameter makes it required in FastAPI.",
+        "source_answer": "Not declaring any default value for a query parameter makes it required in FastAPI."
+      }
+    ],
+    "evidence_matches": [
+      {
+        "claim_id": "clean_005_claim_01",
+        "claim_text": "Not declaring any default value for a query parameter makes it required in FastAPI.",
+        "best_evidence_span": "But when you want to make a query parameter required, you can just not declare any default value.",
+        "similarity_score": 0.8607,
+        "classification": "SUPPORTED",
+        "threshold_used": 0.68,
+        "technical_conflict": true
+      }
+    ],
+    "supported_count": 1,
+    "unsupported_count": 0,
+    "skipped_count": 0,
+    "faithfulness_score": 1.0,
+    "is_insufficient_context_response": false,
+    "has_failure": false,
+    "failure_cases": [],
+    "similarity_threshold": 0.68,
+    "embedding_model": "nomic-embed-text",
+    "evaluator_version": "1.2.2",
+    "timestamp_utc": "2026-10-17T15:47:03.912654+00:00",
+    "evaluation_path": "claim_extraction"
+  },
+  {
+    "case_id": "clean_006",
+    "model": "mistral",
+    "question": "What are the three effects of adding `max_length=50` to a `Query()` declaration in FastAPI?",
+    "answer": "1. Validation of the string data.\n2. Showing a clear error when the data exceeds 50 characters.\n3. Documentation of the parameter in the OpenAPI schema path operation.",
+    "context_preview": "You can pass more parameters to Query. In this case, the max_length parameter that applies to strings: q: str | None = Query(default=None, max_length=50). This will validate the data, show a clear err...",
+    "total_claims": 3,
+    "claims": [
+      {
+        "claim_id": "clean_006_claim_02",
+        "text": "Validation of the string data.",
+        "source_answer": "1. Validation of the string data.\n2. Showing a clear error when the data exceeds 50 characters.\n3. Documentation of the parameter in the OpenAPI schema path operation."
+      },
+      {
+        "claim_id": "clean_006_claim_03",
+        "text": "Showing a clear error when the data exceeds 50 characters.",
+        "source_answer": "1. Validation of the string data.\n2. Showing a clear error when the data exceeds 50 characters.\n3. Documentation of the parameter in the OpenAPI schema path operation."
+      },
+      {
+        "claim_id": "clean_006_claim_04",
+        "text": "Documentation of the parameter in the OpenAPI schema path operation.",
+        "source_answer": "1. Validation of the string data.\n2. Showing a clear error when the data exceeds 50 characters.\n3. Documentation of the parameter in the OpenAPI schema path operation."
+      }
+    ],
+    "evidence_matches": [
+      {
+        "claim_id": "clean_006_claim_02",
+        "claim_text": "Validation of the string data.",
+        "best_evidence_span": "This will validate the data, show a clear error when the data is not valid, and document the parameter in the OpenAPI schema path operation.",
+        "similarity_score": 0.6465,
+        "classification": "UNSUPPORTED",
+        "threshold_used": 0.68,
+        "technical_conflict": false
+      },
+      {
+        "claim_id": "clean_006_claim_03",
+        "claim_text": "Showing a clear error when the data exceeds 50 characters.",
+        "best_evidence_span": "In this case, the max_length parameter that applies to strings: q: str | None = Query(default=None, max_length=50).",
+        "similarity_score": 0.6097,
+        "classification": "UNSUPPORTED",
+        "threshold_used": 0.68,
+        "technical_conflict": false
+      },
+      {
+        "claim_id": "clean_006_claim_04",
+        "claim_text": "Documentation of the parameter in the OpenAPI schema path operation.",
+        "best_evidence_span": "This will validate the data, show a clear error when the data is not valid, and document the parameter in the OpenAPI schema path operation.",
+        "similarity_score": 0.8267,
+        "classification": "SUPPORTED",
+        "threshold_used": 0.68,
+        "technical_conflict": false
+      }
+    ],
+    "supported_count": 1,
+    "unsupported_count": 2,
+    "skipped_count": 0,
+    "faithfulness_score": 0.3333,
+    "is_insufficient_context_response": false,
+    "has_failure": true,
+    "failure_cases": [
+      {
+        "claim_id": "clean_006_claim_02",
+        "unsupported_claim": "Validation of the string data.",
+        "best_match_in_context": "This will validate the data, show a clear error when the data is not valid, and document the parameter in the OpenAPI schema path operation.",
+        "similarity_score": 0.6465,
+        "threshold": 0.68,
+        "technical_conflict": false,
+        "diagnosis": "Semantically close (score=0.6465) but below threshold. Possible paraphrase or partial evidence — review manually."
+      },
+      {
+        "claim_id": "clean_006_claim_03",
+        "unsupported_claim": "Showing a clear error when the data exceeds 50 characters.",
+        "best_match_in_context": "In this case, the max_length parameter that applies to strings: q: str | None = Query(default=None, max_length=50).",
+        "similarity_score": 0.6097,
+        "threshold": 0.68,
+        "technical_conflict": false,
+        "diagnosis": "Semantically close (score=0.6097) but below threshold. Possible paraphrase or partial evidence — review manually."
+      }
+    ],
+    "similarity_threshold": 0.68,
+    "embedding_model": "nomic-embed-text",
+    "evaluator_version": "1.2.2",
+    "timestamp_utc": "2026-10-17T15:47:39.678116+00:00",
+    "evaluation_path": "claim_extraction"
+  },
+  {
+    "case_id": "clean_007",
+    "model": "mistral",
+    "question": "What does the OpenAPI schema generated by FastAPI include?",
+    "answer": "The OpenAPI schema generated by FastAPI includes definitions of your API paths, the possible parameters they take, etc.",
+    "context_preview": "FastAPI generates a schema with all your API using the OpenAPI standard for defining APIs. A schema is a definition or description of something. Not the code that implements it, but just an abstract d...",
+    "total_claims": 3,
+    "claims": [
+      {
+        "claim_id": "clean_007_claim_01",
+        "text": "The OpenAPI schema generated by FastAPI includes definitions of your API paths.",
+        "source_answer": "The OpenAPI schema generated by FastAPI includes definitions of your API paths, the possible parameters they take, etc."
+      },
+      {
+        "claim_id": "clean_007_claim_02",
+        "text": "The OpenAPI schema generated by FastAPI includes the possible parameters they take.",
+        "source_answer": "The OpenAPI schema generated by FastAPI includes definitions of your API paths, the possible parameters they take, etc."
+      },
+      {
+        "claim_id": "clean_007_claim_03",
+        "text": "The OpenAPI schema generated by FastAPI includes etc.",
+        "source_answer": "The OpenAPI schema generated by FastAPI includes definitions of your API paths, the possible parameters they take, etc."
+      }
+    ],
+    "evidence_matches": [
+      {
+        "claim_id": "clean_007_claim_01",
+        "claim_text": "The OpenAPI schema generated by FastAPI includes definitions of your API paths.",
+        "best_evidence_span": "FastAPI generates a schema with all your API using the OpenAPI standard for defining APIs.",
+        "similarity_score": 0.9058,
+        "classification": "SUPPORTED",
+        "threshold_used": 0.68,
+        "technical_conflict": false
+      },
+      {
+        "claim_id": "clean_007_claim_02",
+        "claim_text": "The OpenAPI schema generated by FastAPI includes the possible parameters they take.",
+        "best_evidence_span": "FastAPI generates a schema with all your API using the OpenAPI standard for defining APIs.",
+        "similarity_score": 0.8434,
+        "classification": "SUPPORTED",
+        "threshold_used": 0.68,
+        "technical_conflict": false
+      },
+      {
+        "claim_id": "clean_007_claim_03",
+        "claim_text": "The OpenAPI schema generated by FastAPI includes etc.",
+        "best_evidence_span": "FastAPI generates a schema with all your API using the OpenAPI standard for defining APIs.",
+        "similarity_score": 0.8675,
+        "classification": "SUPPORTED",
+        "threshold_used": 0.68,
+        "technical_conflict": false
+      }
+    ],
+    "supported_count": 3,
+    "unsupported_count": 0,
+    "skipped_count": 0,
+    "faithfulness_score": 1.0,
+    "is_insufficient_context_response": false,
+    "has_failure": false,
+    "failure_cases": [],
+    "similarity_threshold": 0.68,
+    "embedding_model": "nomic-embed-text",
+    "evaluator_version": "1.2.2",
+    "timestamp_utc": "2026-10-17T15:48:08.908564+00:00",
+    "evaluation_path": "claim_extraction"
+  },
+  {
+    "case_id": "clean_008",
+    "model": "mistral",
+    "question": "If you want the URL to include the path `/home/johndoe/myfile.txt` as the value of `file_path`, what would the full URL look like?",
+    "answer": "/files/home/johndoe/myfile.txt",
+    "context_preview": "You can declare a path parameter containing a path using a URL like: /files/{file_path:path}. In this case, the name of the parameter is file_path, and the last part, :path, tells it that the paramete...",
+    "total_claims": 1,
+    "claims": [],
+    "evidence_matches": [],
+    "supported_count": 1,
+    "unsupported_count": 0,
+    "skipped_count": 0,
+    "faithfulness_score": 0.9,
+    "is_insufficient_context_response": false,
+    "has_failure": false,
+    "failure_cases": [],
+    "similarity_threshold": 0.68,
+    "embedding_model": "nomic-embed-text",
+    "evaluator_version": "1.2.2",
+    "timestamp_utc": "2026-10-17T15:48:44.868228+00:00",
+    "evaluation_path": "short_answer_exact_match"
+  },
+  {
+    "case_id": "clean_009",
+    "model": "mistral",
+    "question": "According to FastAPI documentation, what HTTP method is used to update data?",
+    "answer": "PUT",
+    "context_preview": "In the HTTP protocol, you can communicate to each path using one or more of these methods. When building APIs, you normally use these specific HTTP methods to perform a specific action: POST to create...",
+    "total_claims": 1,
+    "claims": [],
+    "evidence_matches": [],
+    "supported_count": 1,
+    "unsupported_count": 0,
+    "skipped_count": 0,
+    "faithfulness_score": 0.9,
+    "is_insufficient_context_response": false,
+    "has_failure": false,
+    "failure_cases": [],
+    "similarity_threshold": 0.68,
+    "embedding_model": "nomic-embed-text",
+    "evaluator_version": "1.2.2",
+    "timestamp_utc": "2026-10-17T15:49:06.202444+00:00",
+    "evaluation_path": "short_answer_exact_match"
+  },
+  {
+    "case_id": "clean_010",
+    "model": "mistral",
+    "question": "What happens by default when FastAPI receives a single Pydantic model as a body parameter?",
+    "answer": "FastAPI will expect its body directly as the single Pydantic model.",
+    "context_preview": "Let's say you only have a single item body parameter from a Pydantic model Item. By default, FastAPI will then expect its body directly. But if you want it to expect a JSON with a key item and inside ...",
+    "total_claims": 1,
+    "claims": [
+      {
+        "claim_id": "clean_010_claim_01",
+        "text": "FastAPI will expect its body directly as the single Pydantic model.",
+        "source_answer": "FastAPI will expect its body directly as the single Pydantic model."
+      }
+    ],
+    "evidence_matches": [
+      {
+        "claim_id": "clean_010_claim_01",
+        "claim_text": "FastAPI will expect its body directly as the single Pydantic model.",
+        "best_evidence_span": "By default, FastAPI will then expect its body directly.",
+        "similarity_score": 0.8633,
+        "classification": "SUPPORTED",
+        "threshold_used": 0.68,
+        "technical_conflict": false
+      }
+    ],
+    "supported_count": 1,
+    "unsupported_count": 0,
+    "skipped_count": 0,
+    "faithfulness_score": 1.0,
+    "is_insufficient_context_response": false,
+    "has_failure": false,
+    "failure_cases": [],
+    "similarity_threshold": 0.68,
+    "embedding_model": "nomic-embed-text",
+    "evaluator_version": "1.2.2",
+    "timestamp_utc": "2026-10-17T15:49:32.128726+00:00",
+    "evaluation_path": "claim_extraction"
+  }
+]

@@ -3,8 +3,10 @@ import argparse
 import logging
 import sys
 import time
+import threading
 from datetime import datetime, timezone
 from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
@@ -16,10 +18,6 @@ from pipeline.provenance import build_provenance
 from evaluators.faithfulness import FaithfulnessEvaluator, FaithfulnessResult
 from evaluators.consistency import ConsistencyEvaluator
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s — %(message)s",
-)
 logger = logging.getLogger("runner")
 DATA_DIR    = PROJECT_ROOT / "data" / "dataset"
 REPORTS_DIR = PROJECT_ROOT / config["pipeline"]["results_dir"]
@@ -241,33 +239,102 @@ def run_evaluation(
         logger.error("nomic-embed-text tidak tersedia. Jalankan: ollama pull nomic-embed-text")
         sys.exit(1)
     logger.info("All health checks passed.\n")
-    
+
+def run_evaluation(
+    model_name: str,
+    dataset_name: str,
+    limit: int = None,
+    similarity_threshold: float = None,
+    resume: bool = True,
+    dry_run: bool = False,
+    workers: int = 3,
+) -> dict:
+    if dataset_name == "paraphrase":
+        # Paraphrase dievaluasi sebagai dimensi konsistensi, bukan faithfulness.
+        return run_consistency_evaluation(
+            model_name=model_name,
+            limit=limit,
+            dry_run=dry_run,
+        )
+
+    similarity_threshold = similarity_threshold or config["thresholds"]["faithfulness_evidence"]
+
+    run_id = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    logger.info(
+        f"Starting evaluation | run_id={run_id} | model={model_name} | "
+        f"dataset={dataset_name} | limit={limit} | resume={resume} | "
+        f"dry_run={dry_run} | workers={workers}"
+    )
+
+    REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+    output_prefix = REPORTS_DIR / f"{model_name.replace(':', '-')}_{dataset_name}_{run_id}"
+
+    # Load dataset
+    logger.info("Loading dataset...")
+    cases = load_dataset(dataset_name, limit=limit)
+    logger.info(f"Loaded {len(cases)} cases")
+
+    # Case paraphrase punya 'variants' (bukan 'question') dan dievaluasi lewat
+    # run_consistency_evaluation; pipeline faithfulness hanya clean + distractor.
+    paraphrase_cases = [c for c in cases if "variants" in c]
+    if paraphrase_cases:
+        cases = [c for c in cases if "variants" not in c]
+        logger.info(
+            f"{len(paraphrase_cases)} paraphrase cases di-skip dari run faithfulness — "
+            f"evaluasi terpisah: --dataset paraphrase"
+        )
+
+    if not cases:
+        logger.error("No cases to evaluate.")
+        sys.exit(1)
+
+    if dry_run:
+        print(f"\n[DRY RUN] Dataset valid: {len(cases)} cases")
+        if paraphrase_cases:
+            print(f"[DRY RUN] {len(paraphrase_cases)} paraphrase cases di-skip "
+                  f"(dievaluasi via --dataset paraphrase)")
+        print(f"[DRY RUN] Model: {model_name} | Threshold: {similarity_threshold}")
+        print(f"[DRY RUN] Workers: {workers}")
+        for case in cases:
+            print(f"  {case['id']} — {case['question'][:60]}")
+        print("\n[DRY RUN] Selesai. Tidak ada inference yang dijalankan.")
+        return {"dry_run": True, "cases": len(cases), "skipped_paraphrase": len(paraphrase_cases)}
+
+    client = OllamaClient(model=model_name, temperature=0.0)
+    faithfulness_evaluator = FaithfulnessEvaluator(
+        similarity_threshold=similarity_threshold
+    )
+
+    # health checks
+    logger.info("Running health checks...")
+    if not client.health_check():
+        logger.error(f"Model '{model_name}' tidak tersedia. Jalankan: ollama pull {model_name}")
+        sys.exit(1)
+    if not faithfulness_evaluator.health_check():
+        logger.error("nomic-embed-text tidak tersedia. Jalankan: ollama pull nomic-embed-text")
+        sys.exit(1)
+    logger.info("All health checks passed.\n")
+
     case_ids = [c["id"] for c in cases]
     if not resume:
         _clear_checkpoints(model_name, dataset_name, case_ids)
-        
+
+    # Cek checkpoint: pisahkan case yang sudah selesai dari yang belum
     already_done = [cid for cid in case_ids if _load_checkpoint(model_name, dataset_name, cid)]
+    pending_cases = [c for c in cases if c["id"] not in already_done]
+
     if already_done and resume:
-        logger.info(f"Resume mode: {len(already_done)}/{len(cases)} cases already done, skipping.")
+        logger.info(
+            f"Resume mode: {len(already_done)}/{len(cases)} cases already done, skipping."
+        )
 
-    logger.info(
-        f"Starting inference | {len(cases)} cases | model={model_name}\n"
-        f"Estimasi waktu: ~4-5 menit per case di CPU. "
-        f"Biarkan jalan sampai selesai atau Ctrl+C — progress tersimpan.\n"
-    )
-
-    query_results        = []
-    faithfulness_results = []
-    total     = len(cases)
-    run_start = time.time()
-
-    for i, case in enumerate(cases, 1):
-        case_id   = case["id"]
-        case_type = _detect_case_type(case)
-        
-        cached = _load_checkpoint(model_name, dataset_name, case_id)
-        if cached and resume:
-            logger.info(f"[{i}/{total}] {case_id} — SKIPPED (checkpoint exists)")
+    if not pending_cases:
+        logger.info("Semua case sudah selesai. Tidak ada yang perlu dijalankan ulang.")
+        # Muat semua hasil dari checkpoint untuk summary
+        query_results = []
+        faithfulness_results = []
+        for cid in case_ids:
+            cached = _load_checkpoint(model_name, dataset_name, cid)
             query_results.append(_dict_to_query_output(cached.get("query_result", {})))
             faith_result_obj = _checkpoint_to_faithfulness_result(
                 cached.get("faithfulness_result", {}),
@@ -276,60 +343,91 @@ def run_evaluation(
                 evaluator_version=FaithfulnessEvaluator.VERSION,
             )
             faithfulness_results.append(faith_result_obj)
-            continue
-
-        logger.info(f"[{i}/{total}] Running | case_id={case_id}")
-        case_start = time.time()
-        query_result = _query_with_retry(client, case, case_type)
-        query_results.append(query_result)
-        faith_result_dict = None
-
-        if query_result.success and query_result.answer:
-            faith_result = faithfulness_evaluator.evaluate(
-                case=case,
-                model_answer=query_result.answer,
-                model_name=model_name,
-            )
-            faithfulness_results.append(faith_result)
-            faith_result_dict = _faithfulness_to_dict(faith_result)
-        else:
-            logger.warning(
-                f"Skipping faithfulness eval | case_id={case_id} | "
-                f"reason={'query failed' if not query_result.success else 'empty answer'}"
-            )
-            
-        checkpoint_data = {
-            "case_id": case_id,
-            "model": model_name,
-            "dataset": dataset_name,
-            "timestamp_utc": datetime.now(timezone.utc).isoformat(),
-            "query_result": {
-                "case_id": query_result.case_id,
-                "success": query_result.success,
-                "answer": query_result.answer,
-                "latency_seconds": query_result.latency_seconds,
-                "error_message": getattr(query_result, "error_message", None),
-            },
-            "faithfulness_result": faith_result_dict,
-        }
-        _save_checkpoint(model_name, dataset_name, case_id, checkpoint_data)
-        
-        elapsed   = round(time.time() - case_start, 1)
-        remaining = total - i
-        eta       = remaining * elapsed
+        total_elapsed = 0.0
+    else:
         logger.info(
-            f"Case done | elapsed={elapsed}s | "
-            f"ETA={eta//60:.0f}m {eta%60:.0f}s remaining\n"
+            f"Starting inference | {len(pending_cases)} pending | "
+            f"{len(already_done)} cached | model={model_name} | workers={workers}\n"
         )
 
-    total_elapsed = round(time.time() - run_start, 1)
+        query_results = []
+        faithfulness_results = []
+        total = len(cases)
+        run_start = time.time()
+
+        # Muat hasil dari checkpoint yang sudah ada
+        for cid in already_done:
+            cached = _load_checkpoint(model_name, dataset_name, cid)
+            query_results.append(_dict_to_query_output(cached.get("query_result", {})))
+            faith_result_obj = _checkpoint_to_faithfulness_result(
+                cached.get("faithfulness_result", {}),
+                similarity_threshold=similarity_threshold,
+                embedding_model=config["models"]["embedding"],
+                evaluator_version=FaithfulnessEvaluator.VERSION,
+            )
+            faithfulness_results.append(faith_result_obj)
+
+        # Proses pending cases secara parallel
+        total_pending = len(pending_cases)
+        completed_count = len(already_done)
+        lock = threading.Lock()
+
+        # Tempat penyimpanan hasil sesuai indeks untuk menjaga urutan
+        pending_query_results = [None] * total_pending
+        pending_faith_results = [None] * total_pending
+
+        def process_case_task(case, idx):
+            return idx, process_single_case(
+                case=case,
+                model_name=model_name,
+                dataset_name=dataset_name,
+                similarity_threshold=similarity_threshold,
+                resume=resume,
+                client=client,
+                evaluator=faithfulness_evaluator,
+                embedding_model=config["models"]["embedding"],
+                evaluator_version=FaithfulnessEvaluator.VERSION,
+            )
+
+        with ThreadPoolExecutor(max_workers=workers) as executor:
+            futures = {
+                executor.submit(process_case_task, case, i): i
+                for i, case in enumerate(pending_cases)
+            }
+
+            for future in as_completed(futures):
+                idx, result = future.result()
+                pending_query_results[idx] = result["query_result"]
+                pending_faith_results[idx] = result["faithfulness_result"]
+
+                with lock:
+                    completed_count += 1
+                    elapsed_total = round(time.time() - run_start, 1)
+                    done_pending = completed_count - len(already_done)
+                    remaining = total_pending - done_pending
+                    if done_pending > 0:
+                        avg_time = elapsed_total / done_pending
+                        eta = remaining * avg_time / workers
+                    else:
+                        eta = 0
+                    logger.info(
+                        f"Progress: {completed_count}/{total} cases | "
+                        f"ETA={eta//60:.0f}m {eta%60:.0f}s remaining"
+                    )
+
+        # Extend hasil dalam urutan case
+        query_results.extend(pending_query_results)
+        for r in pending_faith_results:
+            if r is not None:
+                faithfulness_results.append(r)
+
+        total_elapsed = round(time.time() - run_start, 1)
 
     # save raw query results
     query_output_path = str(output_prefix) + "_queries.json"
     save_query_results(query_results, query_output_path)
 
     # save faithfulness results — merge checkpointed + newly computed (resume-safe)
-    # Bug fix: resumed runs previously dropped checkpointed cases from the output
     all_faith_results = list(faithfulness_results)
     faith_output_path = str(output_prefix) + "_faithfulness.json"
     faithfulness_evaluator.save_results(all_faith_results, faith_output_path)
@@ -515,10 +613,102 @@ def _query_with_template(client: OllamaClient, case: dict, case_type: str) -> Qu
         )
 
 def _detect_case_type(case: dict) -> str:
+    # Gunakan field eksplisit "type" dari dataset; fallback ke deteksi berdasarkan ID
+    # untuk backward compatibility dengan dataset lama.
+    case_type = case.get("type", "")
+    if case_type:
+        return case_type
     case_id = case.get("id", "")
     if "distractor" in case_id:
         return "distractor"
+    if "paraphrase" in case_id:
+        return "paraphrase"
     return "clean"
+
+
+def process_single_case(
+    case: dict,
+    model_name: str,
+    dataset_name: str,
+    similarity_threshold: float,
+    resume: bool,
+    client: OllamaClient,
+    evaluator: FaithfulnessEvaluator,
+    embedding_model: str,
+    evaluator_version: str,
+) -> dict:
+    """Proses satu case: cek checkpoint, query, evaluasi, simpan checkpoint.
+    
+    Thread-safe: setiap case menulis ke file checkpoint sendiri.
+    """
+    case_id = case["id"]
+    case_type = _detect_case_type(case)
+
+    # Cek checkpoint dulu
+    if resume:
+        cached = _load_checkpoint(model_name, dataset_name, case_id)
+        if cached:
+            logger.info(f"  [{case_id}] SKIPPED (checkpoint exists)")
+            return {
+                "case_id": case_id,
+                "query_result": _dict_to_query_output(cached.get("query_result", {})),
+                "faithfulness_result": _checkpoint_to_faithfulness_result(
+                    cached.get("faithfulness_result", {}),
+                    similarity_threshold=similarity_threshold,
+                    embedding_model=embedding_model,
+                    evaluator_version=evaluator_version,
+                ),
+                "cached": True,
+                "elapsed": 0.0,
+            }
+
+    # Jalankan query + evaluasi
+    logger.info(f"  [{case_id}] Running")
+    case_start = time.time()
+    query_result = _query_with_retry(client, case, case_type)
+    faith_result = None
+
+    if query_result.success and query_result.answer:
+        faith_result = evaluator.evaluate(
+            case=case,
+            model_answer=query_result.answer,
+            model_name=model_name,
+        )
+    else:
+        logger.warning(
+            f"  [{case_id}] Skipping faithfulness eval | "
+            f"reason={'query failed' if not query_result.success else 'empty answer'}"
+        )
+
+    # Simpan checkpoint (tiap case ke file sendiri, tidak ada konflik thread)
+    faith_result_dict = _faithfulness_to_dict(faith_result) if faith_result else None
+    checkpoint_data = {
+        "case_id": case_id,
+        "model": model_name,
+        "dataset": dataset_name,
+        "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+        "query_result": {
+            "case_id": query_result.case_id,
+            "success": query_result.success,
+            "answer": query_result.answer,
+            "latency_seconds": query_result.latency_seconds,
+            "error_message": getattr(query_result, "error_message", None),
+        },
+        "faithfulness_result": faith_result_dict,
+    }
+    _save_checkpoint(model_name, dataset_name, case_id, checkpoint_data)
+
+    elapsed = round(time.time() - case_start, 1)
+    logger.info(f"  [{case_id}] Done | elapsed={elapsed}s")
+
+    return {
+        "case_id": case_id,
+        "query_result": query_result,
+        "faithfulness_result": faith_result,
+        "cached": False,
+        "elapsed": elapsed,
+    }
+
 
 # consistency runner — paraphrase dataset (multi-variant cases)
 def run_consistency_evaluation(
@@ -583,7 +773,7 @@ def run_consistency_evaluation(
     summary = {
         "run_id": run_id,
         "model": model_name,
-        "dataset": dataset_name,
+        "dataset": "paraphrase",
         "dimension": "consistency",
         "template_version": TEMPLATE_VERSION,
         "timestamp_utc": datetime.now(timezone.utc).isoformat(),
@@ -750,6 +940,8 @@ Examples:
         help="Ignore checkpoint, re-run semua cases dari awal")
     parser.add_argument("--dry-run", action="store_true",
         help="Validasi dataset dan config tanpa inference")
+    parser.add_argument("--workers", type=int, default=3,
+        help="Jumlah worker parallel untuk inference (default: 3)")
     return parser.parse_args()
 
 if __name__ == "__main__":
@@ -765,6 +957,7 @@ if __name__ == "__main__":
     print(f"Threshold : {threshold_display}")
     print(f"Resume : {not args.no_resume}")
     print(f"Dry run   : {args.dry_run}")
+    print(f"Workers   : {args.workers}")
     print("=" * 60 + "\n")
     
     run_evaluation(
@@ -774,5 +967,6 @@ if __name__ == "__main__":
         similarity_threshold=args.threshold,
         resume=not args.no_resume,
         dry_run=args.dry_run,
+        workers=args.workers,
     )
     

@@ -33,11 +33,11 @@ logs/
 
 # Reports — generated files
 # (reports/charts/ sengaja TIDAK di-ignore: PNG-nya di-commit untuk README)
-# reports/results/ sebelumnya di-ignore (artefak harus di-commit agar bisa diverifikasi ulang)
-# Namun kita commit summary/faithfulness/consistency; log berat tetap di-ignore
+# reports/results/*: artefak JSON (summary/faithfulness/consistency) di-commit
+# agar hasil bisa diverifikasi ulang. README.txt adalah guard untuk kebijakan ini.
 reports/results/*
+!reports/results/*.json
 !reports/results/README.txt
-reports/report.html
 
 # Checkpoints — resume state, tidak di-commit
 logs/checkpoints/
