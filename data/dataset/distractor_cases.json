@@ -18,6 +18,7 @@
   "cases": [
     {
       "id": "distractor_001",
+      "type": "distractor",
       "distractor_type": "value_swap",
       "parent_clean_case": "clean_001",
       "topic": "Query Parameters — Default Values (MODIFIED: nilai ditukar)",
@@ -38,6 +39,7 @@
     },
     {
       "id": "distractor_002",
+      "type": "distractor",
       "distractor_type": "contradictory_info",
       "parent_clean_case": "clean_009",
       "topic": "HTTP Methods — Operations (MODIFIED: mapping method dibalik)",
@@ -58,6 +60,7 @@
     },
     {
       "id": "distractor_003",
+      "type": "distractor",
       "distractor_type": "missing_critical_info",
       "parent_clean_case": "clean_005",
       "topic": "Query Parameters — Making Required (MODIFIED: penjelasan cara membuat required dihapus)",
@@ -78,6 +81,7 @@
     },
     {
       "id": "distractor_004",
+      "type": "distractor",
       "distractor_type": "value_swap",
       "parent_clean_case": "clean_008",
       "topic": "Path Parameters — File Path (MODIFIED: sintaks path type diganti)",
@@ -98,6 +102,7 @@
     },
     {
       "id": "distractor_005",
+      "type": "distractor",
       "distractor_type": "contradictory_info",
       "parent_clean_case": "clean_006",
       "topic": "Query Validation — max_length (MODIFIED: jumlah efek dikurangi, satu efek diganti)",

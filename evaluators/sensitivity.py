@@ -15,6 +15,7 @@ from pipeline.config_loader import config
 logger = logging.getLogger("sensitivity")
 
 DEFAULT_ROBUSTNESS_THRESHOLD = config["thresholds"]["robustness_sensitivity"]
+DEFAULT_ROUGE_THRESHOLD = config["thresholds"].get("consistency_rouge_l", 0.40)
 
 # Tipe perturbasi yang tersedia
 PERTURBATION_TYPO      = "typo"
@@ -141,11 +142,13 @@ class SensitivityEvaluator:
     def __init__(
         self,
         robustness_threshold: float = DEFAULT_ROBUSTNESS_THRESHOLD,
+        rouge_threshold: float = DEFAULT_ROUGE_THRESHOLD,
         ollama_base_url: str = OLLAMA_BASE_URL,
         embedding_model: str = EMBEDDING_MODEL,
         random_seed: int = 42,
     ):
         self.robustness_threshold = robustness_threshold
+        self.rouge_threshold = rouge_threshold
         self.embedding_model = embedding_model
         self.embedder = OllamaEmbedder(
             model=embedding_model,
@@ -235,8 +238,8 @@ class SensitivityEvaluator:
             rouge_l = round(rouge_result["rougeL"].fmeasure, 4)
 
             sem_ok   = sem_sim >= self.robustness_threshold
-            rouge_ok = rouge_l >= 0.40  
-            is_robust = sem_ok  
+            rouge_ok = rouge_l >= self.rouge_threshold
+            is_robust = sem_ok and rouge_ok
 
             sensitivity_type = None
             if not is_robust:

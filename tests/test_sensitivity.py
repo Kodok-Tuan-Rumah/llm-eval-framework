@@ -18,6 +18,7 @@ from evaluators.sensitivity import (
     PERTURBATION_NOISE,
     PERTURBATION_REORDER,
     DEFAULT_ROBUSTNESS_THRESHOLD,
+    DEFAULT_ROUGE_THRESHOLD,
 )
 from evaluators.faithfulness import OllamaEmbedder
 
@@ -75,6 +76,7 @@ def divergent_embedder():
 def evaluator(mock_embedder):
     ev = SensitivityEvaluator.__new__(SensitivityEvaluator)
     ev.robustness_threshold = DEFAULT_ROBUSTNESS_THRESHOLD
+    ev.rouge_threshold = DEFAULT_ROUGE_THRESHOLD
     ev.embedding_model = "mock"
     ev.embedder = mock_embedder
 
@@ -238,6 +240,7 @@ class TestEvaluateFromAnswers:
                                                    sample_question, sample_context):
         ev = SensitivityEvaluator.__new__(SensitivityEvaluator)
         ev.robustness_threshold = 0.85
+        ev.rouge_threshold = DEFAULT_ROUGE_THRESHOLD
         ev.embedding_model = "mock"
         ev.embedder = identical_embedder
         from rouge_score import rouge_scorer
@@ -268,6 +271,7 @@ class TestEvaluateFromAnswers:
                                                sample_question, sample_context):
         ev = SensitivityEvaluator.__new__(SensitivityEvaluator)
         ev.robustness_threshold = 0.85
+        ev.rouge_threshold = DEFAULT_ROUGE_THRESHOLD
         ev.embedding_model = "mock"
         ev.embedder = divergent_embedder
         from rouge_score import rouge_scorer
@@ -333,6 +337,7 @@ class TestEvaluateFromAnswers:
                                                   sample_question, sample_context):
         ev = SensitivityEvaluator.__new__(SensitivityEvaluator)
         ev.robustness_threshold = 0.85
+        ev.rouge_threshold = DEFAULT_ROUGE_THRESHOLD
         ev.embedding_model = "mock"
         ev.embedder = divergent_embedder
         from rouge_score import rouge_scorer

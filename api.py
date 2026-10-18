@@ -7,7 +7,6 @@ import uuid
 
 from evaluators.faithfulness import FaithfulnessEvaluator
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Init evaluator sekali saat startup — berat kalau tiap request
@@ -42,6 +41,11 @@ def health():
 
 @app.post("/evaluate", response_model=EvalResponse)
 def evaluate(req: EvalRequest):
+    if evaluator is None:
+        raise HTTPException(
+            status_code=503,
+            detail="FaithfulnessEvaluator belum diinisialisasi. Tunggu startup selesai atau coba lagi dalam beberapa saat."
+        )
     if not req.answer.strip():
         raise HTTPException(status_code=400, detail="answer cannot be empty")
     if not req.context.strip():

@@ -7,10 +7,6 @@ from datetime import datetime, timezone
 
 import requests
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s — %(message)s",
-)
 logger = logging.getLogger("model_client")
 
 
@@ -39,24 +35,8 @@ class QueryOutput:
     raw_response: Optional[dict] = field(default=None, repr=False)
 
 
-# Prompt template
-
-STRICT_QA_PROMPT = """You are a document-grounded Question Answering system.
-
-RULES (non-negotiable):
-1. Answer ONLY based on the context provided below.
-2. If the answer is not present in the context, respond exactly with: "INSUFFICIENT_CONTEXT"
-3. Do not use prior knowledge, training data, or assumptions.
-4. Be precise. Do not add information that is not explicitly stated in the context.
-5. Keep your answer concise and direct.
-
-CONTEXT:
-{context}
-
-QUESTION:
-{question}
-
-ANSWER:"""
+# Prompt template — impor dari prompt_templates.py (satu sumber kebenaran)
+from pipeline.prompt_templates import PromptTemplate
 
 
 # client
@@ -121,7 +101,7 @@ class OllamaClient:
         question: str,
         case_id: str,
     ) -> QueryOutput:
-        prompt = STRICT_QA_PROMPT.format(
+        prompt = PromptTemplate.strict_qa(
             context=context.strip(),
             question=question.strip(),
         )

@@ -40,7 +40,7 @@ class DependencyComparison:
     answer_b: str
     semantic_similarity: float
     answer_changed: bool   
-    dependency_flag: bool   
+    context_independence_flag: bool   
     diagnosis: str
 
 
@@ -53,7 +53,7 @@ class RetrievalDependencyResult:
     comparisons: list      
     full_vs_no_context_similarity: float
     full_vs_wrong_context_similarity: float
-    high_dependency: bool  
+    is_context_dependent: bool  
     has_failure: bool       
     failure_flags: list
     change_threshold: float
@@ -147,7 +147,7 @@ class RetrievalDependencyEvaluator:
             answer_b=no_context_answer,
             semantic_similarity=sim_full_vs_no,
             answer_changed=sim_full_vs_no < self.change_threshold,
-            dependency_flag=sim_full_vs_no >= self.change_threshold,
+            context_independence_flag=sim_full_vs_no >= self.change_threshold,
             diagnosis=self._diagnose(
                 "full_vs_no_context", sim_full_vs_no, self.change_threshold
             ),
@@ -161,17 +161,17 @@ class RetrievalDependencyEvaluator:
             answer_b=wrong_answer,
             semantic_similarity=sim_full_vs_wrong,
             answer_changed=sim_full_vs_wrong < self.change_threshold,
-            dependency_flag=sim_full_vs_wrong >= self.change_threshold,
+            context_independence_flag=sim_full_vs_wrong >= self.change_threshold,
             diagnosis=self._diagnose(
                 "full_vs_wrong_context", sim_full_vs_wrong, self.change_threshold
             ),
         )
 
         comparisons = [comp_no, comp_wrong]
-        high_dependency = comp_no.answer_changed and comp_wrong.answer_changed
+        is_context_dependent = comp_no.answer_changed and comp_wrong.answer_changed
         
         failure_flags = []
-        if comp_no.dependency_flag:
+        if comp_no.context_independence_flag:
             failure_flags.append({
                 "flag": "CONTEXT_INDEPENDENT_NO_CONTEXT",
                 "pair": "full_vs_no_context",
@@ -183,7 +183,7 @@ class RetrievalDependencyEvaluator:
                 ),
             })
 
-        if comp_wrong.dependency_flag:
+        if comp_wrong.context_independence_flag:
             failure_flags.append({
                 "flag": "CONTEXT_INDEPENDENT_WRONG_CONTEXT",
                 "pair": "full_vs_wrong_context",
@@ -203,7 +203,7 @@ class RetrievalDependencyEvaluator:
             comparisons=comparisons,
             full_vs_no_context_similarity=sim_full_vs_no,
             full_vs_wrong_context_similarity=sim_full_vs_wrong,
-            high_dependency=high_dependency,
+            is_context_dependent=is_context_dependent,
             has_failure=len(failure_flags) > 0,
             failure_flags=failure_flags,
             change_threshold=self.change_threshold,
@@ -215,7 +215,7 @@ class RetrievalDependencyEvaluator:
         logger.log(
             logging.WARNING if result.has_failure else logging.INFO,
             f"Retrieval dependency | case_id={case_id} | "
-            f"high_dependency={high_dependency} | "
+            f"is_context_dependent={is_context_dependent} | "
             f"flags={len(failure_flags)}"
         )
         return result
@@ -330,7 +330,7 @@ ANSWER:"""
             print("Tidak ada hasil.")
             return
 
-        high_dep = [r for r in results if r.high_dependency]
+        high_dep = [r for r in results if r.is_context_dependent]
         failed = [r for r in results if r.has_failure]
 
         sim_no_ctx = [r.full_vs_no_context_similarity for r in results]
@@ -422,7 +422,7 @@ if __name__ == "__main__":
         full_context="POST to create data, GET to read data, PUT to update data, DELETE to delete data.",
         wrong_context="POST to create data, GET to read data, POST to update data, DELETE to delete data.",
     )
-    print(f"High dependency: {r1.high_dependency} | Failure: {r1.has_failure}")
+    print(f"Is context dependent: {r1.is_context_dependent} | Failure: {r1.has_failure}")
     print(f"full_vs_no_ctx similarity  : {r1.full_vs_no_context_similarity}")
     print(f"full_vs_wrong_ctx similarity: {r1.full_vs_wrong_context_similarity}")
 
@@ -435,7 +435,7 @@ if __name__ == "__main__":
         wrong_answer="PUT is the standard method for updating resources.",
         model_name="smoke_test",
     )
-    print(f"High dependency: {r2.high_dependency} | Failure: {r2.has_failure}")
+    print(f"Is context dependent: {r2.is_context_dependent} | Failure: {r2.has_failure}")
     print(f"full_vs_no_ctx similarity  : {r2.full_vs_no_context_similarity}")
     print(f"full_vs_wrong_ctx similarity: {r2.full_vs_wrong_context_similarity}")
     if r2.failure_flags:

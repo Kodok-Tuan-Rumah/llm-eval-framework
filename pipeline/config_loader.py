@@ -8,6 +8,7 @@ Usage:
     threshold = config["thresholds"]["faithfulness_evidence"]
     term_groups = config["technical_term_groups"]
 """
+import logging
 import yaml
 from pathlib import Path
 
@@ -26,3 +27,10 @@ def _load_config() -> dict:
 
 # Singleton — load sekali saat import, pakai berkali-kali tanpa re-read disk
 config = _load_config()
+
+# Logging terpusat — konfigurasi di sini sekali saja, semua module gunakan
+# logging.getLogger(__name__) tanpa memanggil basicConfig lagi.
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s — %(message)s",
+)

@@ -21,12 +21,6 @@ def _char_similarity(a: str, b: str) -> float:
     return SequenceMatcher(None, a, b).ratio()
 
 def _contains_phrase(haystack: str, needle: str) -> bool:
-    """True jika `needle` muncul di `haystack` sebagai kata/frasa utuh.
-
-    Dipakai untuk short answer supaya substring di dalam kata lain tidak
-    dianggap grounded (contoh: 'patch' tidak match 'dispatch').
-    Input diharapkan sudah lewat _normalize() (lowercase, tanpa tanda baca).
-    """
     if not needle:
         return False
     pattern = rf"(?<!\w){re.escape(needle)}(?!\w)"
@@ -35,7 +29,6 @@ def _contains_phrase(haystack: str, needle: str) -> bool:
 def _is_short_answer(answer: str) -> bool:
     threshold = config["thresholds"]["short_answer_max_words"]
     return len(answer.strip().split()) < threshold
-
 logger = logging.getLogger("faithfulness")
 
 # Konstanta — nilai default, akan di-override oleh config jika tersedia
