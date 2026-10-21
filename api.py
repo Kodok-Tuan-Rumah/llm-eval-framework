@@ -1,9 +1,17 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request, Response
 from pydantic import BaseModel
 from typing import Optional
 from contextlib import asynccontextmanager
 import logging
+import time
 import uuid
+
+from prometheus_client import (
+    CONTENT_TYPE_LATEST,
+    Counter,
+    Histogram,
+    generate_latest,
+)
 
 from evaluators.faithfulness import FaithfulnessEvaluator
 
@@ -22,6 +30,32 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="LLM Eval Service", version="1.0.0", lifespan=lifespan)
 
+# Keep the same histogram name/labels as the other Go/Python services so the
+# workspace Grafana overview can aggregate all jobs with one PromQL expression.
+HTTP_REQUEST_DURATION = Histogram(
+    "http_request_duration_seconds",
+    "HTTP request duration in seconds",
+    ["method", "path"],
+    buckets=(0.01, 0.05, 0.1, 0.5, 1, 5, 10, 30, 60, 120, 300),
+)
+EVAL_REQUESTS_TOTAL = Counter(
+    "eval_requests_total",
+    "Completed evaluations by failure mode",
+    ["failure_mode", "has_failure"],
+)
+
+
+@app.middleware("http")
+async def observe_http_requests(request: Request, call_next):
+    started = time.perf_counter()
+    try:
+        return await call_next(request)
+    finally:
+        HTTP_REQUEST_DURATION.labels(
+            method=request.method,
+            path=request.url.path,
+        ).observe(time.perf_counter() - started)
+
 class EvalRequest(BaseModel):
     answer: str
     context: str
@@ -38,6 +72,11 @@ class EvalResponse(BaseModel):
 @app.get("/health")
 def health():
     return {"status": "ok", "service": "llm-eval-framework"}
+
+
+@app.get("/metrics")
+def metrics():
+    return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 @app.post("/evaluate", response_model=EvalResponse)
 def evaluate(req: EvalRequest):
@@ -68,6 +107,11 @@ def evaluate(req: EvalRequest):
         failure_mode = "unsupported_claims"
     if result.is_insufficient_context_response:
         failure_mode = "insufficient_context"
+
+    EVAL_REQUESTS_TOTAL.labels(
+        failure_mode=failure_mode,
+        has_failure=str(result.has_failure).lower(),
+    ).inc()
 
     return EvalResponse(
         faithfulness_score=result.faithfulness_score,

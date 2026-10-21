@@ -411,9 +411,21 @@ make verify
 # 7. Jalankan semua test
 make test
 
+# 7b. Jalankan test dengan coverage
+make test-cov
+
+# 7c. Jalankan linter & syntax compilation check
+make lint
+
 # 8. Hapus checkpoints/log (hindari hapus artifacts & charts)
 make clean-artifacts
 ```
+
+### Cross-Service Integration (`mcp-gateway` & `rag-research`)
+Modul ini menyediakan HTTP API service via FastAPI (`api.py` pada port `8002`) yang mengonsumsi kontrak `POST /evaluate`:
+- **Request:** `{"question": "...", "answer": "...", "context": "..."}`
+- **Response:** `{"faithfulness_score": 0.95, "has_failure": false, "supported_claims": 2, ...}`
+- Digunakan oleh `mcp-gateway` sebagai lapisan verifikasi independen (*independent verification layer*) sebelum meneruskan respons ke klien.
 
 Tiap artefak hasil (`*_faithfulness.json`, `*_summary.json`, `*_consistency.json`) di-commit beserta blok **provenance** (evaluator_version, git_commit, git_dirty, config_snapshot, dataset.sha256, generated_at). Jika artefak ada, `make verify` akan menolak jika drift terdeteksi (mis. threshold config_snapshot berbeda dengan `config.yaml`).
 

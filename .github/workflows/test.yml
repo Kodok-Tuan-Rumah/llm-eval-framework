@@ -24,12 +24,16 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
+    - name: Syntax compilation check
+      run: |
+        python -m py_compile *.py evaluators/*.py pipeline/*.py reports/*.py scripts/*.py tests/*.py
+
     - name: Reproducibility check
       run: |
         python scripts/check_reproducibility.py 2>&1 | tail -10
 
-    - name: Unit tests (pytest)
-      run: python -m pytest -q tests/
+    - name: Unit tests with coverage
+      run: python -m pytest tests/ --cov=. --cov-report=term-missing
 
   secrets-scan:
     name: Secrets scan

@@ -109,3 +109,12 @@ class TestEvaluateEndpoint:
 class TestHealthEndpoint:
     def test_health(self):
         assert api_module.health() == {"status": "ok", "service": "llm-eval-framework"}
+
+
+class TestMetricsEndpoint:
+    def test_metrics_exposes_prometheus_text(self):
+        response = api_module.metrics()
+        assert response.media_type == api_module.CONTENT_TYPE_LATEST
+        body = response.body.decode()
+        assert "http_request_duration_seconds" in body
+        assert "eval_requests_total" in body

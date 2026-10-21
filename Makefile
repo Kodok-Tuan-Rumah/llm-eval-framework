@@ -1,4 +1,4 @@
-.PHONY: help install test lint eval eval-clean eval-distractor eval-paraphrase report render-analysis verify clean
+.PHONY: help install test test-cov lint eval eval-clean eval-distractor eval-paraphrase report render-analysis verify clean clean-artifacts
 
 MODEL ?= mistral
 PYTHON ?= python3
@@ -17,7 +17,11 @@ install:  ## Install dependencies
 test:  ## Run tests
 	$(PYTHON) -m pytest tests/ -v
 
-lint:  ## Static check (jika tersedia)
+test-cov:  ## Run tests with coverage
+	$(PYTHON) -m pytest tests/ --cov=. --cov-report=term-missing
+
+lint:  ## Static check & syntax compilation
+	$(PYTHON) -m py_compile *.py evaluators/*.py pipeline/*.py reports/*.py scripts/*.py tests/*.py
 	@if command -v ruff >/dev/null 2>&1; then ruff check .; fi
 	@if command -v black >/dev/null 2>&1; then black --check .; fi
 
