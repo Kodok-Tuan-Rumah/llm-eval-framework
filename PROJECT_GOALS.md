@@ -54,6 +54,10 @@ It acts as an independent verification layer in the monorepo workspace, ensuring
 
 ## 4. Current Roadmap & Next Steps
 
-1. **Test Suite Verification:** Run all unit and integration tests under `tests/` to guarantee baseline stability.
-2. **Gateway Integration Alignment:** Verify that `mcp-gateway` successfully consumes the `/evaluate` endpoint during end-to-end runs.
-3. **Metric Calibration:** Use evaluation logs to calibrate thresholds for hallucination detection and abstention triggers in `rag-research`.
+The evaluator and HTTP wrapper are implemented. The items below are release and
+quality gates; passing unit tests alone does not satisfy them.
+
+1. **Reproducible evaluation:** Record dataset/config/model hashes and the current test output for each release candidate.
+2. **Gateway integration:** Source-level adapter exists; runtime verification through the shared Compose stack remains a separate gate.
+3. **Metric validation:** Treat current thresholds as heuristics. Calibration requires reviewed positive/negative examples and held-out evaluation; do not tune RAG abstention from this service's score alone.
+4. **Scope boundary:** The evaluator measures support by its method; it is not a factual truth oracle or a calibrated confidence service.

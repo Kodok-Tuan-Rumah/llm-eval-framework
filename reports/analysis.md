@@ -8,19 +8,24 @@
 
 ---
 
-> ## ⚠️ Status Reproduksibilitas — Baca Dulu
+> ## Status Provenance — Baca Dulu
 >
-> Seluruh angka di bawah berasal dari run **Februari 2026** (run ID `20260221_074512`
-> untuk mistral/clean, `20260221_103528` untuk mistral/distractor). Run tersebut
-> dijalankan **sebelum** dua perubahan yang memengaruhi skor:
+> Dokumen ini menggabungkan narasi historis dan tabel hasil yang di-render dari
+> artefak berbeda. Narasi lama merujuk run **Februari 2026** (run ID
+> `20260221_074512` untuk mistral/clean, `20260221_103528` untuk
+> mistral/distractor). Tabel di blok `GENERATED:RESULTS` memakai run
+> **17 Oktober 2026** yang artefaknya tercatat di `reports/results/`. Jangan
+> menganggap seluruh angka di dokumen ini berasal dari run atau konfigurasi sama.
+> Run Februari dilakukan **sebelum** dua perubahan yang memengaruhi skor:
 >
 > 1. Kalibrasi threshold `faithfulness_evidence` dari **0.75 → 0.68** (commit `c430562`, Maret 2026).
 > 2. Perbaikan *short answer path* hingga **v1.2.2** (commit `581e2ca`) — clean_008/clean_009
 >    pada tabel di bawah masih mencerminkan evaluator pra-perbaikan (skor 0.0).
 >
-> **Artefak mentah (`reports/results/*.json`) belum di-commit**, sehingga angka-angka ini
-> **belum dapat diverifikasi ulang** dan harus diperlakukan sebagai *historical snapshot*,
-> bukan hasil evaluator v1.2.2 saat ini. Untuk mendapatkan angka yang sah, jalankan ulang:
+> Artefak run Februari tersebut tidak tersedia pada file hasil yang dilacak saat
+> ini, sehingga agregat Februari **belum dapat direproduksi dari repo**. Artefak
+> Oktober adalah snapshot lain; keberadaannya tidak memvalidasi ulang angka
+> Februari. Untuk mengukur ulang konfigurasi sekarang, jalankan:
 >
 > ```bash
 > python -m pipeline.runner --model mistral --dataset clean

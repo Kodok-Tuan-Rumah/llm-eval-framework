@@ -92,7 +92,7 @@ llm-eval-framework/
 │   ├── test_model_client.py          # Ollama client
 │   ├── test_runner.py                # Dataset loader + paraphrase/consistency flow
 │   └── test_api.py                   # HTTP /evaluate service
-│                                     # Total: 184 tests, no Ollama required
+│                                     # Test count can change; see current pytest output
 │
 ├── logs/                             # Background run logs + checkpoints
 ├── api.py                            # FastAPI wrapper — /health, /evaluate (port 8002)
@@ -163,7 +163,7 @@ python pipeline/runner.py --model mistral --dataset paraphrase
 **Run tests**
 ```bash
 pytest tests/ -v
-# Expected: 184 passed
+# Use the test runner output as the current pass/skip count
 ```
 
 **Run the HTTP service** (requires Ollama for embeddings)
@@ -302,9 +302,10 @@ The HTTP service returns the evaluator version that produced each result:
 
 > ⚠️ **Historical snapshot — not the current evaluator.** These numbers come from February 2026
 > runs, produced *before* the `faithfulness_evidence` threshold was calibrated from 0.75 to 0.68
-> and before the short-answer fix reached v1.2.2. The raw `reports/results/*.json` artifacts are
-> not committed, so the phi3:mini aggregates (and the pre-fix short-answer cases) **cannot be
-> re-verified**. Re-run the pipeline before citing any of these figures; see
+> and before the short-answer fix reached v1.2.2. Raw artifacts for those February runs are not
+> present in the tracked results, so the phi3:mini aggregates (and the pre-fix short-answer cases)
+> **cannot be re-verified**. Separate October 2026 result files are tracked; they are not the same
+> runs. Re-run the pipeline before citing the February figures; see
 > [`reports/analysis.md`](reports/analysis.md) for the full provenance note.
 
 ### Mistral — Clean vs Distractor Dataset
