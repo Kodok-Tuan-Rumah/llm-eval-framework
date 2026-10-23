@@ -1,6 +1,7 @@
 import json
 import argparse
 import logging
+import os
 import sys
 import time
 import threading
@@ -135,10 +136,23 @@ def _load_checkpoint(model: str, dataset: str, case_id: str) -> dict | None:
         return None
 
 def _save_checkpoint(model: str, dataset: str, case_id: str, result: dict) -> None:
+    """Tulis checkpoint secara atomik: file sementara + fsync + os.replace.
+
+    Target hanya pernah berisi checkpoint lama yang utuh atau checkpoint baru
+    yang utuh — tidak pernah JSON parsial akibat proses mati di tengah tulis.
+    """
     path = _checkpoint_path(model, dataset, case_id)
+    tmp = path.with_suffix(path.suffix + ".tmp")
     payload = {**result, "schema_version": CHECKPOINT_SCHEMA_VERSION}
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(payload, f, indent=2, ensure_ascii=False)
+    try:
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(payload, f, indent=2, ensure_ascii=False)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp, path)
+    finally:
+        if tmp.exists():
+            tmp.unlink()
     logger.debug(f"Checkpoint saved | case_id={case_id} | path={path}")
 
 def _clear_checkpoints(model: str, dataset: str, case_ids: list[str]) -> None:
