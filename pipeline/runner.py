@@ -30,7 +30,8 @@ DATASET_FILES = {
 }
 
 # checkpoint schema — bump saat format berubah agar checkpoint lama diabaikan
-CHECKPOINT_SCHEMA_VERSION = 2
+# v3: simpan seluruh field FaithfulnessResult + provenance QueryOutput (E2)
+CHECKPOINT_SCHEMA_VERSION = 3
 
 REQUIRED_FAITHFULNESS_FIELDS = {
     "case_id", "model", "question", "answer",
@@ -525,12 +526,20 @@ def _checkpoint_to_faithfulness_result(
     missing = REQUIRED_FAITHFULNESS_FIELDS - set(data)
     if missing:
         raise CheckpointInvalidError(f"faithfulness_result missing fields: {sorted(missing)}")
+
+    # Provenance tersimpan menang atas nilai run sekarang. Fallback ke argumen
+    # run hanya untuk checkpoint lama yang belum menyimpan field tersebut.
+    stored_threshold = data.get("similarity_threshold")
+    stored_embedding = data.get("embedding_model")
+    stored_version = data.get("evaluator_version")
+    stored_timestamp = data.get("timestamp_utc")
+
     return FaithfulnessResult(
         case_id=data.get("case_id", "unknown"),
-        model="",
+        model=data.get("model", ""),
         question=data.get("question", ""),
         answer=data.get("answer", ""),
-        context_preview="",
+        context_preview=data.get("context_preview", ""),
         total_claims=data.get("total_claims", 0) or 0,
         claims=data.get("claims", []) or [],
         evidence_matches=data.get("evidence_matches", []) or [],
@@ -541,23 +550,48 @@ def _checkpoint_to_faithfulness_result(
         is_insufficient_context_response=bool(data.get("is_insufficient_context_response", False)),
         has_failure=bool(data.get("has_failure", False)),
         failure_cases=data.get("failure_cases", []) or [],
-        similarity_threshold=similarity_threshold,
-        embedding_model=embedding_model,
-        evaluator_version=evaluator_version,
-        timestamp_utc=data.get("timestamp_utc", datetime.now(timezone.utc).isoformat()),
+        similarity_threshold=(
+            stored_threshold if stored_threshold is not None else similarity_threshold
+        ),
+        embedding_model=(
+            stored_embedding if stored_embedding is not None else embedding_model
+        ),
+        evaluator_version=(
+            stored_version if stored_version is not None else evaluator_version
+        ),
+        timestamp_utc=(
+            stored_timestamp
+            if stored_timestamp is not None
+            else datetime.now(timezone.utc).isoformat()
+        ),
         evaluation_path=data.get("evaluation_path", "claim_extraction"),
     )
+
+
+def _query_output_to_dict(result: QueryOutput) -> dict:
+    """Serialisasi QueryOutput untuk checkpoint — semua provenance ikut disimpan."""
+    return {
+        "case_id": result.case_id,
+        "model": result.model,
+        "question": result.question,
+        "context_length_chars": result.context_length_chars,
+        "answer": result.answer,
+        "latency_seconds": result.latency_seconds,
+        "timestamp_utc": result.timestamp_utc,
+        "success": result.success,
+        "error_message": result.error_message,
+    }
 
 
 def _dict_to_query_output(d: dict) -> QueryOutput:
     return QueryOutput(
         case_id=d.get("case_id", "unknown"),
-        model="",
-        question="",
-        context_length_chars=0,
+        model=d.get("model", ""),
+        question=d.get("question", ""),
+        context_length_chars=d.get("context_length_chars", 0),
         answer=d.get("answer", ""),
         latency_seconds=d.get("latency_seconds", 0.0),
-        timestamp_utc=datetime.now(timezone.utc).isoformat(),
+        timestamp_utc=d.get("timestamp_utc", datetime.now(timezone.utc).isoformat()),
         success=d.get("success", False),
         error_message=d.get("error_message"),
     )
@@ -569,18 +603,22 @@ def _faithfulness_to_dict(result) -> dict:
         "model": result.model,
         "question": result.question,
         "answer": result.answer,
-        "faithfulness_score": result.faithfulness_score,
-        "has_failure": result.has_failure,
-        "is_insufficient_context_response": result.is_insufficient_context_response,
-        "evaluation_path": result.evaluation_path,
-        "failure_cases": result.failure_cases,
+        "context_preview": result.context_preview,
+        "total_claims": result.total_claims,
+        "claims": result.claims,
+        "evidence_matches": result.evidence_matches,
         "supported_count": result.supported_count,
         "unsupported_count": result.unsupported_count,
-        "total_claims": result.total_claims,
+        "skipped_count": result.skipped_count,
+        "faithfulness_score": result.faithfulness_score,
+        "is_insufficient_context_response": result.is_insufficient_context_response,
+        "has_failure": result.has_failure,
+        "failure_cases": result.failure_cases,
         "similarity_threshold": result.similarity_threshold,
         "embedding_model": result.embedding_model,
         "evaluator_version": result.evaluator_version,
         "timestamp_utc": result.timestamp_utc,
+        "evaluation_path": result.evaluation_path,
     }
 
 # Query helpers
@@ -730,13 +768,7 @@ def process_single_case(
         "model": model_name,
         "dataset": dataset_name,
         "timestamp_utc": datetime.now(timezone.utc).isoformat(),
-        "query_result": {
-            "case_id": query_result.case_id,
-            "success": query_result.success,
-            "answer": query_result.answer,
-            "latency_seconds": query_result.latency_seconds,
-            "error_message": getattr(query_result, "error_message", None),
-        },
+        "query_result": _query_output_to_dict(query_result),
         "faithfulness_result": faith_result_dict,
     }
     _save_checkpoint(model_name, dataset_name, case_id, checkpoint_data)
