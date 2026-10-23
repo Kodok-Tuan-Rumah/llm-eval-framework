@@ -387,6 +387,33 @@ class TestCheckpointHelpers:
         runner_module.CHECKPOINT_DIR = tmp_path
         return runner_module, original
 
+    def _complete_checkpoint(self, case_id, model, score, total_claims=3,
+                             failure_cases=None, answer="PATCH"):
+        """Checkpoint payload lengkap yang lolos completeness gate."""
+        failure_cases = failure_cases or []
+        return {
+            "case_id": case_id,
+            "model": model,
+            "dataset": "clean",
+            "timestamp_utc": "2026-01-01T00:00:00Z",
+            "query_result": {"success": True, "answer": answer},
+            "faithfulness_result": {
+                "case_id": case_id,
+                "model": model,
+                "question": "Which HTTP method should be used?",
+                "answer": answer,
+                "faithfulness_score": score,
+                "supported_count": total_claims - len(failure_cases),
+                "total_claims": total_claims,
+                "similarity_threshold": 0.68,
+                "embedding_model": "nomic-embed-text",
+                "evaluator_version": "1.2.2",
+                "timestamp_utc": "2026-01-01T00:00:00Z",
+                "has_failure": bool(failure_cases),
+                "failure_cases": failure_cases,
+            },
+        }
+
     def test_checkpoint_path_format(self, tmp_path):
         import pipeline.runner as runner_module
         runner_module.CHECKPOINT_DIR = tmp_path
@@ -408,11 +435,7 @@ class TestCheckpointHelpers:
         import pipeline.runner as runner_module
         runner_module.CHECKPOINT_DIR = tmp_path
 
-        data = {
-            "case_id": "clean_001",
-            "faithfulness_result": {"faithfulness_score": 0.75, "has_failure": False},
-            "query_result": {"success": True, "answer": "PATCH"},
-        }
+        data = self._complete_checkpoint("clean_001", "mistral", 0.75)
 
         runner_module._save_checkpoint("mistral", "clean", "clean_001", data)
         loaded = runner_module._load_checkpoint("mistral", "clean", "clean_001")
@@ -471,15 +494,10 @@ class TestCheckpointHelpers:
         import pipeline.runner as runner_module
         runner_module.CHECKPOINT_DIR = tmp_path
 
-        data = {
-            "case_id": "clean_001",
-            "faithfulness_result": {
-                "faithfulness_score": 0.6667,
-                "has_failure": True,
-                "total_claims": 3,
-                "failure_cases": [{"claim_id": "c1", "diagnosis": "test"}],
-            },
-        }
+        data = self._complete_checkpoint(
+            "clean_001", "mistral", 0.6667,
+            failure_cases=[{"claim_id": "c1", "diagnosis": "test"}],
+        )
         
         runner_module._save_checkpoint("mistral", "clean", "clean_001", data)
         loaded = runner_module._load_checkpoint("mistral", "clean", "clean_001")
@@ -494,17 +512,22 @@ class TestCheckpointHelpers:
         import pipeline.runner as runner_module
         runner_module.CHECKPOINT_DIR = tmp_path
 
-        runner_module._save_checkpoint("mistral", "clean", "clean_001",
-                                       {"model": "mistral", "score": 0.8})
-        runner_module._save_checkpoint("phi3:mini", "clean", "clean_001",
-                                       {"model": "phi3:mini", "score": 0.6})
+        runner_module._save_checkpoint(
+            "mistral", "clean", "clean_001",
+            self._complete_checkpoint("clean_001", "mistral", 0.8),
+        )
+        runner_module._save_checkpoint(
+            "phi3:mini", "clean", "clean_001",
+            self._complete_checkpoint("clean_001", "phi3:mini", 0.6),
+        )
 
         mistral_cp = runner_module._load_checkpoint("mistral", "clean", "clean_001")
         phi3_cp    = runner_module._load_checkpoint("phi3:mini", "clean", "clean_001")
 
         assert mistral_cp["model"] == "mistral"
         assert phi3_cp["model"] == "phi3:mini"
-        assert mistral_cp["score"] != phi3_cp["score"]
+        assert (mistral_cp["faithfulness_result"]["faithfulness_score"]
+                != phi3_cp["faithfulness_result"]["faithfulness_score"])
 
 
 # TestShortAnswerContextMatching — jalur API tanpa ground_truth

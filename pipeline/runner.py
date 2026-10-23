@@ -29,6 +29,20 @@ DATASET_FILES = {
     "paraphrase": DATA_DIR / "paraphrase_cases.json",
 }
 
+# checkpoint schema — bump saat format berubah agar checkpoint lama diabaikan
+CHECKPOINT_SCHEMA_VERSION = 2
+
+REQUIRED_FAITHFULNESS_FIELDS = {
+    "case_id", "model", "question", "answer",
+    "faithfulness_score", "supported_count", "total_claims",
+    "similarity_threshold", "embedding_model", "evaluator_version",
+    "timestamp_utc",
+}
+
+
+class CheckpointInvalidError(ValueError):
+    """Checkpoint tidak lengkap / tidak bisa dikonversi menjadi hasil evaluasi."""
+
 # dataset loader
 def load_dataset(dataset_name: str, limit: int = None) -> list[dict]:
     if dataset_name == "all":
@@ -89,6 +103,17 @@ def _checkpoint_path(model: str, dataset: str, case_id: str) -> Path:
     safe_model = model.replace(":", "-")
     return CHECKPOINT_DIR / f"{safe_model}__{dataset}__{case_id}.json"
 
+def _checkpoint_is_complete(data: dict) -> bool:
+    """True hanya untuk checkpoint schema terkini dengan faithfulness lengkap."""
+    if not isinstance(data, dict):
+        return False
+    if data.get("schema_version") != CHECKPOINT_SCHEMA_VERSION:
+        return False
+    faithfulness_result = data.get("faithfulness_result")
+    if not isinstance(faithfulness_result, dict) or not faithfulness_result:
+        return False
+    return REQUIRED_FAITHFULNESS_FIELDS.issubset(faithfulness_result)
+
 def _load_checkpoint(model: str, dataset: str, case_id: str) -> dict | None:
     path = _checkpoint_path(model, dataset, case_id)
     if not path.exists():
@@ -96,6 +121,12 @@ def _load_checkpoint(model: str, dataset: str, case_id: str) -> dict | None:
     try:
         with open(path, encoding="utf-8") as f:
             data = json.load(f)
+        if not _checkpoint_is_complete(data):
+            logger.warning(
+                "Incomplete/stale checkpoint ignored | case_id=%s | schema=%s",
+                case_id, data.get("schema_version") if isinstance(data, dict) else None,
+            )
+            return None
         logger.debug(f"Checkpoint loaded | case_id={case_id}")
         return data
     except (json.JSONDecodeError, KeyError) as e:
@@ -104,8 +135,9 @@ def _load_checkpoint(model: str, dataset: str, case_id: str) -> dict | None:
 
 def _save_checkpoint(model: str, dataset: str, case_id: str, result: dict) -> None:
     path = _checkpoint_path(model, dataset, case_id)
+    payload = {**result, "schema_version": CHECKPOINT_SCHEMA_VERSION}
     with open(path, "w", encoding="utf-8") as f:
-        json.dump(result, f, indent=2, ensure_ascii=False)
+        json.dump(payload, f, indent=2, ensure_ascii=False)
     logger.debug(f"Checkpoint saved | case_id={case_id} | path={path}")
 
 def _clear_checkpoints(model: str, dataset: str, case_ids: list[str]) -> None:
@@ -482,12 +514,17 @@ class _CheckpointFaithfulness:
 
 
 def _checkpoint_to_faithfulness_result(
-    data: dict,
+    data: dict | None,
     similarity_threshold: float,
     embedding_model: str,
     evaluator_version: str,
 ) -> FaithfulnessResult:
     """Konversi checkpoint dict → FaithfulnessResult (dataclass) untuk merge resume-safe."""
+    if not isinstance(data, dict) or not data:
+        raise CheckpointInvalidError("faithfulness_result is missing")
+    missing = REQUIRED_FAITHFULNESS_FIELDS - set(data)
+    if missing:
+        raise CheckpointInvalidError(f"faithfulness_result missing fields: {sorted(missing)}")
     return FaithfulnessResult(
         case_id=data.get("case_id", "unknown"),
         model="",
@@ -529,7 +566,9 @@ def _dict_to_query_output(d: dict) -> QueryOutput:
 def _faithfulness_to_dict(result) -> dict:
     return {
         "case_id": result.case_id,
+        "model": result.model,
         "question": result.question,
+        "answer": result.answer,
         "faithfulness_score": result.faithfulness_score,
         "has_failure": result.has_failure,
         "is_insufficient_context_response": result.is_insufficient_context_response,
@@ -538,6 +577,10 @@ def _faithfulness_to_dict(result) -> dict:
         "supported_count": result.supported_count,
         "unsupported_count": result.unsupported_count,
         "total_claims": result.total_claims,
+        "similarity_threshold": result.similarity_threshold,
+        "embedding_model": result.embedding_model,
+        "evaluator_version": result.evaluator_version,
+        "timestamp_utc": result.timestamp_utc,
     }
 
 # Query helpers

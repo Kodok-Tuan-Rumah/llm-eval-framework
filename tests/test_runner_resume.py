@@ -36,6 +36,27 @@ def _make_faithfulness_result(case_id: str, score: float, has_failure: bool = Fa
     )
 
 
+def _complete_faithfulness_dict(case_id: str, score: float, has_failure: bool = False,
+                                failure_cases: list | None = None) -> dict:
+    """Checkpoint faithfulness payload yang lolos completeness gate."""
+    return {
+        "case_id": case_id,
+        "model": "mistral",
+        "question": f"q-{case_id}",
+        "answer": "a",
+        "faithfulness_score": score,
+        "supported_count": 1,
+        "total_claims": 1,
+        "similarity_threshold": 0.68,
+        "embedding_model": "nomic-embed-text",
+        "evaluator_version": "1.2.2",
+        "timestamp_utc": "2026-01-01T00:00:00Z",
+        "has_failure": has_failure,
+        "is_insufficient_context_response": False,
+        "failure_cases": failure_cases or [],
+    }
+
+
 def test_checkpoint_roundtrip(tmp_path):
     cdir = tmp_path / "checkpoints"
     cdir.mkdir()
@@ -43,7 +64,9 @@ def test_checkpoint_roundtrip(tmp_path):
 
     runner._save_checkpoint("mistral", "clean", "case_1", {
         "query_result": {"case_id": "case_1", "success": True, "answer": "a1", "latency_seconds": 0.1, "error_message": None},
-        "faithfulness_result": {"case_id": "case_1", "faithfulness_score": 0.8, "has_failure": True, "is_insufficient_context_response": False, "failure_cases": [{"diagnosis": "cached"}]},
+        "faithfulness_result": _complete_faithfulness_dict(
+            "case_1", 0.8, has_failure=True, failure_cases=[{"diagnosis": "cached"}]
+        ),
     })
     loaded = runner._load_checkpoint("mistral", "clean", "case_1")
     assert loaded is not None
@@ -134,11 +157,15 @@ def test_run_evaluation_resume_merges_checkpointed_and_new(tmp_path, monkeypatch
     # checkpoint untuk case_1 & case_2
     runner._save_checkpoint("mistral", "clean", "case_1", {
         "query_result": {"case_id": "case_1", "success": True, "answer": "a1", "latency_seconds": 0.1, "error_message": None},
-        "faithfulness_result": {"case_id": "case_1", "faithfulness_score": 0.8, "has_failure": True, "is_insufficient_context_response": False, "failure_cases": [{"diagnosis": "cached"}]},
+        "faithfulness_result": _complete_faithfulness_dict(
+            "case_1", 0.8, has_failure=True, failure_cases=[{"diagnosis": "cached"}]
+        ),
     })
     runner._save_checkpoint("mistral", "clean", "case_2", {
         "query_result": {"case_id": "case_2", "success": True, "answer": "a2", "latency_seconds": 0.1, "error_message": None},
-        "faithfulness_result": {"case_id": "case_2", "faithfulness_score": 0.9, "has_failure": True, "is_insufficient_context_response": False, "failure_cases": [{"diagnosis": "cached2"}]},
+        "faithfulness_result": _complete_faithfulness_dict(
+            "case_2", 0.9, has_failure=True, failure_cases=[{"diagnosis": "cached2"}]
+        ),
     })
 
     monkeypatch.setattr(runner, "_query_with_template", fake_query_template)
