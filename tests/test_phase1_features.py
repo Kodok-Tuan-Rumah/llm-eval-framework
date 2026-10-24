@@ -301,6 +301,34 @@ class TestShortAnswerPath:
         assert result.faithfulness_score < 0.9
         assert result.evaluation_path == "short_answer_exact_match"
 
+    def test_negated_context_mention_does_not_count_as_grounded(self, mock_embedder):
+        """The online API has no ground truth, so a whole-word match is the
+        only evidence. A mention the context explicitly negates must not be
+        reported as a fully faithful answer."""
+        case = {
+            "id": "test_negated",
+            "context": "Use the PATCH method, not PUT, to update this resource.",
+            "question": "Which HTTP method updates part of a resource?",
+        }
+        evaluator = _make_evaluator(mock_embedder)
+        result = evaluator.evaluate(case, "PUT", "test")
+
+        assert result.evaluation_path == "short_answer_exact_match"
+        assert result.has_failure is True
+        assert result.faithfulness_score == 0.0
+
+    def test_negated_context_phrase_instead_of_does_not_ground(self, mock_embedder):
+        case = {
+            "id": "test_negated_phrase",
+            "context": "Use PATCH instead of PUT for partial updates.",
+            "question": "Which HTTP method updates part of a resource?",
+        }
+        evaluator = _make_evaluator(mock_embedder)
+        result = evaluator.evaluate(case, "PUT", "test")
+
+        assert result.has_failure is True
+        assert result.faithfulness_score == 0.0
+
     def test_short_answer_result_has_correct_structure(self, base_case, mock_embedder):
         evaluator = _make_evaluator(mock_embedder)
         result = evaluator.evaluate(base_case, "PATCH", "test")

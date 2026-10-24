@@ -26,6 +26,42 @@ def _contains_phrase(haystack: str, needle: str) -> bool:
     pattern = rf"(?<!\w){re.escape(needle)}(?!\w)"
     return re.search(pattern, haystack) is not None
 
+# A short answer is only grounded if the context asserts it. Whole-word
+# containment alone treats "use PATCH, not PUT" as evidence for PUT, which
+# published a perfect faithfulness score for the opposite of the evidence.
+_NEGATION_CUES = {
+    "not", "no", "never", "without", "except", "excluding", "neither", "nor",
+    "isnt", "arent", "dont", "doesnt", "didnt", "cant", "cannot", "wont",
+    "shouldnt", "mustnt", "wouldnt", "couldnt",
+}
+_NEGATION_PHRASES = (
+    ("instead", "of"),
+    ("rather", "than"),
+    ("as", "opposed", "to"),
+)
+
+def _contains_unnegated_phrase(haystack: str, needle: str, window: int = 4) -> bool:
+    """True when at least one whole-word occurrence is not negated.
+
+    Only the tokens before an occurrence are inspected: in "use PUT, not
+    PATCH" the negation after PUT applies to PATCH, not to PUT.
+    """
+    if not needle:
+        return False
+    pattern = rf"(?<!\w){re.escape(needle)}(?!\w)"
+    for match in re.finditer(pattern, haystack):
+        preceding = re.findall(r"[a-z0-9]+", haystack[:match.start()].lower())
+        preceding = preceding[-window:]
+        if any(token in _NEGATION_CUES for token in preceding):
+            continue
+        if any(
+            tuple(preceding[-len(phrase):]) == phrase
+            for phrase in _NEGATION_PHRASES
+        ):
+            continue
+        return True
+    return False
+
 def _is_short_answer(answer: str) -> bool:
     threshold = config["thresholds"]["short_answer_max_words"]
     return len(answer.strip().split()) < threshold
@@ -371,7 +407,7 @@ class FaithfulnessEvaluator:
         # comparing every answer with the empty string (which would make all
         # answers match).
         if not norm_truth:
-            grounded = _contains_phrase(norm_ctx, norm_answer)
+            grounded = _contains_unnegated_phrase(norm_ctx, norm_answer)
             match_type = "context_exact_match" if grounded else "no_evidence_match"
             base_score = 1.0 if grounded else 0.0
             matched = grounded
@@ -399,7 +435,7 @@ class FaithfulnessEvaluator:
                 match_type = "char_similarity" if matched else "no_match"
                 base_score = round(char_sim, 4)
 
-        grounded = _contains_phrase(norm_ctx, norm_answer)
+        grounded = _contains_unnegated_phrase(norm_ctx, norm_answer)
         score    = base_score if (grounded or matched) else round(base_score * 0.5, 4)
         has_fail = not matched
 
