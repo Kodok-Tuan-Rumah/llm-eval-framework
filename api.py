@@ -74,6 +74,15 @@ def health():
     return {"status": "ok", "service": "llm-eval-framework"}
 
 
+@app.get("/ready")
+def ready():
+    if evaluator is None:
+        raise HTTPException(status_code=503, detail="FaithfulnessEvaluator not initialized")
+    if not evaluator.health_check(timeout=2.0):
+        raise HTTPException(status_code=503, detail="Ollama embedding dependency unavailable")
+    return {"status": "ready", "service": "llm-eval-framework", "check": "readiness"}
+
+
 @app.get("/metrics")
 def metrics():
     return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)

@@ -111,6 +111,33 @@ class TestHealthEndpoint:
         assert api_module.health() == {"status": "ok", "service": "llm-eval-framework"}
 
 
+class TestReadyEndpoint:
+    def test_ready_when_evaluator_and_embedding_are_ready(self, stub_evaluator):
+        evaluator = stub_evaluator(_fake_result())
+        evaluator.health_check.return_value = True
+
+        assert api_module.ready() == {
+            "status": "ready",
+            "service": "llm-eval-framework",
+            "check": "readiness",
+        }
+
+    def test_not_ready_when_embedding_dependency_is_down(self, stub_evaluator):
+        evaluator = stub_evaluator(_fake_result())
+        evaluator.health_check.return_value = False
+
+        with pytest.raises(HTTPException) as exc:
+            api_module.ready()
+        assert exc.value.status_code == 503
+
+    def test_not_ready_when_evaluator_is_not_initialized(self, monkeypatch):
+        monkeypatch.setattr(api_module, "evaluator", None)
+
+        with pytest.raises(HTTPException) as exc:
+            api_module.ready()
+        assert exc.value.status_code == 503
+
+
 class TestMetricsEndpoint:
     def test_metrics_exposes_prometheus_text(self):
         response = api_module.metrics()

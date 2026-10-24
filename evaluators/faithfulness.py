@@ -119,9 +119,14 @@ class OllamaEmbedder:
             embeddings.append(self.embed(text))
         return np.stack(embeddings)
 
-    def health_check(self) -> bool:
+    def health_check(self, timeout: float = 5.0) -> bool:
         try:
-            self.embed("health check")
+            response = requests.post(
+                self._endpoint,
+                json={"model": self.model, "input": "health check"},
+                timeout=timeout,
+            )
+            response.raise_for_status()
             logger.info(f"Embedder health check OK | model={self.model}")
             return True
         except requests.exceptions.ConnectionError:
@@ -343,8 +348,8 @@ class FaithfulnessEvaluator:
             f"version={self.VERSION}"
         )
 
-    def health_check(self) -> bool:
-        return self.embedder.health_check()
+    def health_check(self, timeout: float = 5.0) -> bool:
+        return self.embedder.health_check(timeout=timeout)
     
     def _evaluate_short_answer(
         self,
