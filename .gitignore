@@ -31,13 +31,10 @@ logs/
 # Environment variables
 .env
 
-# Reports — generated files
-# (reports/charts/ sengaja TIDAK di-ignore: PNG-nya di-commit untuk README)
-# reports/results/*: artefak JSON (summary/faithfulness/consistency) di-commit
-# agar hasil bisa diverifikasi ulang. README.txt adalah guard untuk kebijakan ini.
-reports/results/*
-!reports/results/*.json
-!reports/results/README.txt
+# Reports — generated files (not source)
+reports/charts/*.png
+reports/report.html
+reports/results/*.json
 
 # Checkpoints — resume state, tidak di-commit
 logs/checkpoints/

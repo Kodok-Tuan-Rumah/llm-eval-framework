@@ -1,12 +1,3 @@
-"""Regression tests for atomic checkpoint writes (E3).
-
-Bug: ``_save_checkpoint`` menulis langsung ke path target. Proses yang mati di
-tengah penulisan meninggalkan file JSON parsial, dan resume berikutnya
-menganggap checkpoint itu corrupt — kehilangan hasil yang sudah ada. Penulisan
-harus lewat file ``.tmp`` lalu ``os.replace`` agar target selalu berisi JSON
-yang utuh (lama atau baru, tidak pernah setengah).
-"""
-
 import json
 import os
 import sys
@@ -17,7 +8,6 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from pipeline import runner
-
 
 PAYLOAD = {
     "case_id": "case_1",

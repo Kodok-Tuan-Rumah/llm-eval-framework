@@ -1,15 +1,14 @@
+import itertools
 import json
 import logging
-import itertools
-from dataclasses import dataclass, asdict
-from datetime import datetime, timezone
-from typing import Optional
+from dataclasses import asdict, dataclass
+from datetime import UTC, datetime
 
 import numpy as np
+from pipeline.config_loader import config
 from rouge_score import rouge_scorer
 
-from evaluators.faithfulness import OllamaEmbedder, OLLAMA_BASE_URL, EMBEDDING_MODEL
-from pipeline.config_loader import config
+from evaluators.faithfulness import EMBEDDING_MODEL, OLLAMA_BASE_URL, OllamaEmbedder
 
 logger = logging.getLogger("consistency")
 
@@ -36,7 +35,7 @@ class VariantPairComparison:
     semantic_similarity: float
     rouge_l_score: float
     is_consistent: bool
-    inconsistency_type: Optional[str]
+    inconsistency_type: str | None
 
 
 @dataclass
@@ -93,7 +92,9 @@ class ConsistencyEvaluator:
         variants_with_answers: list,
         model_name: str = "unknown",
     ) -> ConsistencyResult:
-        logger.info(f"Evaluating consistency | case_id={case_id} | variants={len(variants_with_answers)}")
+        logger.info(
+            f"Evaluating consistency | case_id={case_id} | variants={len(variants_with_answers)}"
+        )
 
         answer_variants = [
             AnswerVariant(
@@ -109,7 +110,9 @@ class ConsistencyEvaluator:
         valid = [v for v in answer_variants if v.answer.strip()]
         if len(valid) < 2:
             logger.warning(f"Not enough valid variants | case_id={case_id}")
-            return self._build_insufficient_result(case_id, topic, model_name, answer_variants)
+            return self._build_insufficient_result(
+                case_id, topic, model_name, answer_variants
+            )
 
         logger.info(f"Embedding {len(valid)} answers...")
         embeddings = self.embedder.embed_batch([v.answer for v in valid])
@@ -138,17 +141,19 @@ class ConsistencyEvaluator:
                 else:
                     inconsistency_type = "lexical"
 
-            comparisons.append(VariantPairComparison(
-                pair_id=f"{va.variant_label}_vs_{vb.variant_label}",
-                variant_a=va.variant_label,
-                variant_b=vb.variant_label,
-                answer_a=va.answer,
-                answer_b=vb.answer,
-                semantic_similarity=round(sem_sim, 4),
-                rouge_l_score=rouge_l,
-                is_consistent=is_consistent,
-                inconsistency_type=inconsistency_type,
-            ))
+            comparisons.append(
+                VariantPairComparison(
+                    pair_id=f"{va.variant_label}_vs_{vb.variant_label}",
+                    variant_a=va.variant_label,
+                    variant_b=vb.variant_label,
+                    answer_a=va.answer,
+                    answer_b=vb.answer,
+                    semantic_similarity=round(sem_sim, 4),
+                    rouge_l_score=rouge_l,
+                    is_consistent=is_consistent,
+                    inconsistency_type=inconsistency_type,
+                )
+            )
 
         sem_scores = [c.semantic_similarity for c in comparisons]
         rouge_scores_list = [c.rouge_l_score for c in comparisons]
@@ -172,10 +177,15 @@ class ConsistencyEvaluator:
         ]
 
         result = ConsistencyResult(
-            case_id=case_id, model=model_name, topic=topic,
-            total_variants=len(valid), variants=answer_variants,
-            total_pairs=len(comparisons), comparisons=comparisons,
-            avg_semantic_similarity=avg_sem, avg_rouge_l=avg_rouge,
+            case_id=case_id,
+            model=model_name,
+            topic=topic,
+            total_variants=len(valid),
+            variants=answer_variants,
+            total_pairs=len(comparisons),
+            comparisons=comparisons,
+            avg_semantic_similarity=avg_sem,
+            avg_rouge_l=avg_rouge,
             consistency_score=consistency_score,
             is_fully_consistent=len(inconsistent) == 0,
             inconsistent_pairs=inconsistent_pairs_doc,
@@ -184,13 +194,13 @@ class ConsistencyEvaluator:
             rouge_threshold=self.rouge_threshold,
             embedding_model=self.embedding_model,
             evaluator_version=self.VERSION,
-            timestamp_utc=datetime.now(timezone.utc).isoformat(),
+            timestamp_utc=datetime.now(UTC).isoformat(),
         )
 
         logger.log(
             logging.WARNING if result.has_failure else logging.INFO,
             f"Consistency result | case_id={case_id} | score={consistency_score} | "
-            f"inconsistent={len(inconsistent)}/{len(comparisons)}"
+            f"inconsistent={len(inconsistent)}/{len(comparisons)}",
         )
         return result
 
@@ -200,8 +210,9 @@ class ConsistencyEvaluator:
         client,
         model_name: str,
     ) -> list:
-        import requests as req
         import time
+
+        import requests as req
         from pipeline.prompt_templates import PromptTemplate
 
         results = []
@@ -236,19 +247,28 @@ class ConsistencyEvaluator:
                 start = time.time()
                 try:
                     response = req.post(
-                        client._endpoint, json=payload,
+                        client._endpoint,
+                        json=payload,
                         timeout=client.timeout_seconds,
                     )
                     response.raise_for_status()
-                    answer = response.json().get("message", {}).get("content", "").strip()
-                    logger.info(f"  Variant '{label}' OK | latency={round(time.time()-start,1)}s")
+                    answer = (
+                        response.json().get("message", {}).get("content", "").strip()
+                    )
+                    logger.info(
+                        f"  Variant '{label}' OK | latency={round(time.time() - start, 1)}s"
+                    )
                 except Exception as e:
                     answer = ""
                     logger.error(f"  Variant '{label}' FAILED | {e}")
 
-                variants_with_answers.append({
-                    "label": label, "question": question, "answer": answer,
-                })
+                variants_with_answers.append(
+                    {
+                        "label": label,
+                        "question": question,
+                        "answer": answer,
+                    }
+                )
 
             result = self.evaluate_from_answers(
                 case_id=case_id,
@@ -280,7 +300,7 @@ class ConsistencyEvaluator:
         print("CONSISTENCY EVALUATION SUMMARY")
         print("=" * 60)
         print(f"Total cases          : {total}")
-        print(f"Avg consistency score: {avg:.4f} ({avg*100:.1f}%)")
+        print(f"Avg consistency score: {avg:.4f} ({avg * 100:.1f}%)")
         print(f"Fully consistent     : {len(fully_ok)}/{total}")
         print(f"Cases with failure   : {len(failed)}")
         print(f"Semantic threshold   : {results[0].semantic_threshold}")
@@ -330,25 +350,37 @@ class ConsistencyEvaluator:
             )
         return "Unknown inconsistency type."
 
-    def _build_insufficient_result(self, case_id, topic, model_name, variants) -> ConsistencyResult:
+    def _build_insufficient_result(
+        self, case_id, topic, model_name, variants
+    ) -> ConsistencyResult:
         return ConsistencyResult(
-            case_id=case_id, model=model_name, topic=topic,
-            total_variants=len(variants), variants=variants,
-            total_pairs=0, comparisons=[],
-            avg_semantic_similarity=0.0, avg_rouge_l=0.0,
-            consistency_score=0.0, is_fully_consistent=False,
-            inconsistent_pairs=[{"pair_id": "N/A", "diagnosis": "Not enough valid variants (< 2)."}],
+            case_id=case_id,
+            model=model_name,
+            topic=topic,
+            total_variants=len(variants),
+            variants=variants,
+            total_pairs=0,
+            comparisons=[],
+            avg_semantic_similarity=0.0,
+            avg_rouge_l=0.0,
+            consistency_score=0.0,
+            is_fully_consistent=False,
+            inconsistent_pairs=[
+                {"pair_id": "N/A", "diagnosis": "Not enough valid variants (< 2)."}
+            ],
             has_failure=True,
             semantic_threshold=self.semantic_threshold,
             rouge_threshold=self.rouge_threshold,
             embedding_model=self.embedding_model,
             evaluator_version=self.VERSION,
-            timestamp_utc=datetime.now(timezone.utc).isoformat(),
+            timestamp_utc=datetime.now(UTC).isoformat(),
         )
+
 
 # smoke test
 if __name__ == "__main__":
     import sys
+
     logging.basicConfig(level=logging.INFO, format="%(levelname)s — %(message)s")
 
     print("=" * 60)
@@ -369,12 +401,21 @@ if __name__ == "__main__":
         case_id="smoke_001",
         topic="Query parameter required",
         variants_with_answers=[
-            {"label": "original", "question": "How to make query param required?",
-             "answer": "By not declaring any default value for the parameter."},
-            {"label": "paraphrase_1", "question": "How to force query param mandatory?",
-             "answer": "You can make it required by not providing a default value."},
-            {"label": "paraphrase_2", "question": "How to make query param non-optional?",
-             "answer": "Simply omit the default value declaration for that parameter."},
+            {
+                "label": "original",
+                "question": "How to make query param required?",
+                "answer": "By not declaring any default value for the parameter.",
+            },
+            {
+                "label": "paraphrase_1",
+                "question": "How to force query param mandatory?",
+                "answer": "You can make it required by not providing a default value.",
+            },
+            {
+                "label": "paraphrase_2",
+                "question": "How to make query param non-optional?",
+                "answer": "Simply omit the default value declaration for that parameter.",
+            },
         ],
         model_name="smoke_test",
     )
@@ -385,12 +426,21 @@ if __name__ == "__main__":
         case_id="smoke_002",
         topic="HTTP Methods",
         variants_with_answers=[
-            {"label": "original", "question": "What HTTP method updates data?",
-             "answer": "PUT is used to update data."},
-            {"label": "paraphrase_1", "question": "Which method modifies existing data?",
-             "answer": "PATCH is the correct HTTP method for partial updates and data modification."},
-            {"label": "paraphrase_2", "question": "HTTP method for data modification?",
-             "answer": "PUT is the standard method for updating data according to the documentation."},
+            {
+                "label": "original",
+                "question": "What HTTP method updates data?",
+                "answer": "PUT is used to update data.",
+            },
+            {
+                "label": "paraphrase_1",
+                "question": "Which method modifies existing data?",
+                "answer": "PATCH is the correct HTTP method for partial updates and data modification.",
+            },
+            {
+                "label": "paraphrase_2",
+                "question": "HTTP method for data modification?",
+                "answer": "PUT is the standard method for updating data according to the documentation.",
+            },
         ],
         model_name="smoke_test",
     )

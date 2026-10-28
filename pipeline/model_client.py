@@ -1,9 +1,8 @@
 import json
-import time
 import logging
-from dataclasses import dataclass, field, asdict
-from typing import Optional
-from datetime import datetime, timezone
+import time
+from dataclasses import asdict, dataclass, field
+from datetime import UTC, datetime
 
 import requests
 
@@ -13,12 +12,12 @@ logger = logging.getLogger("model_client")
 # data classes
 @dataclass
 class QueryInput:
-    context: str          
-    question: str          
-    case_id: str           
-    model: str             
-    temperature: float     
-    max_tokens: int       
+    context: str
+    question: str
+    case_id: str
+    model: str
+    temperature: float
+    max_tokens: int
 
 
 @dataclass
@@ -31,8 +30,8 @@ class QueryOutput:
     latency_seconds: float
     timestamp_utc: str
     success: bool
-    error_message: Optional[str] = None
-    raw_response: Optional[dict] = field(default=None, repr=False)
+    error_message: str | None = None
+    raw_response: dict | None = field(default=None, repr=False)
 
 
 # Prompt template — impor dari prompt_templates.py (satu sumber kebenaran)
@@ -44,7 +43,9 @@ class OllamaClient:
     def __init__(
         self,
         model: str = "mistral",
-        base_url: str = __import__("os").getenv("OLLAMA_HOST", "http://localhost:11434"),
+        base_url: str = __import__("os").getenv(
+            "OLLAMA_HOST", "http://localhost:11434"
+        ),
         temperature: float = 0.0,
         max_tokens: int = 512,
         timeout_seconds: int = 900,
@@ -69,10 +70,8 @@ class OllamaClient:
             )
             response.raise_for_status()
             available_models = [m["name"] for m in response.json().get("models", [])]
-            
-            model_available = any(
-                self.model in m for m in available_models
-            )
+
+            model_available = any(self.model in m for m in available_models)
 
             if model_available:
                 logger.info(f"Health check OK | model '{self.model}' available")
@@ -108,9 +107,7 @@ class OllamaClient:
 
         payload = {
             "model": self.model,
-            "messages": [
-                {"role": "user", "content": prompt}
-            ],
+            "messages": [{"role": "user", "content": prompt}],
             "stream": False,
             "options": {
                 "temperature": self.temperature,
@@ -131,7 +128,7 @@ class OllamaClient:
 
             latency = round(time.time() - start_time, 3)
             raw = response.json()
-            
+
             answer = raw.get("message", {}).get("content", "").strip()
 
             logger.info(
@@ -146,7 +143,7 @@ class OllamaClient:
                 context_length_chars=len(context),
                 answer=answer,
                 latency_seconds=latency,
-                timestamp_utc=datetime.now(timezone.utc).isoformat(),
+                timestamp_utc=datetime.now(UTC).isoformat(),
                 success=True,
                 raw_response=raw,
             )
@@ -165,16 +162,13 @@ class OllamaClient:
                 context_length_chars=len(context),
                 answer="",
                 latency_seconds=latency,
-                timestamp_utc=datetime.now(timezone.utc).isoformat(),
+                timestamp_utc=datetime.now(UTC).isoformat(),
                 success=False,
                 error_message=error_msg,
             )
 
         except requests.exceptions.ConnectionError:
-            error_msg = (
-                "Cannot connect to Ollama server. "
-                "Run 'ollama serve' first."
-            )
+            error_msg = "Cannot connect to Ollama server. Run 'ollama serve' first."
             logger.error(f"Query FAILED | case_id={case_id} | {error_msg}")
             return QueryOutput(
                 case_id=case_id,
@@ -183,7 +177,7 @@ class OllamaClient:
                 context_length_chars=len(context),
                 answer="",
                 latency_seconds=0.0,
-                timestamp_utc=datetime.now(timezone.utc).isoformat(),
+                timestamp_utc=datetime.now(UTC).isoformat(),
                 success=False,
                 error_message=error_msg,
             )
@@ -199,7 +193,7 @@ class OllamaClient:
                 context_length_chars=len(context),
                 answer="",
                 latency_seconds=latency,
-                timestamp_utc=datetime.now(timezone.utc).isoformat(),
+                timestamp_utc=datetime.now(UTC).isoformat(),
                 success=False,
                 error_message=error_msg,
             )
@@ -253,17 +247,19 @@ def save_query_results(
     serializable = []
     for r in results:
         d = asdict(r)
-        d.pop("raw_response", None)  
+        d.pop("raw_response", None)
         serializable.append(d)
 
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(serializable, f, indent=2, ensure_ascii=False)
     logger.info(f"Results saved | path={output_path} | count={len(results)}")
 
-# quick smoke test 
+
+# quick smoke test
 if __name__ == "__main__":
     import sys
-    DEV_MODEL  = "phi3:mini"
+
+    DEV_MODEL = "phi3:mini"
     EVAL_MODEL = "mistral"
 
     print("=" * 60)
@@ -292,12 +288,12 @@ if __name__ == "__main__":
     )
 
     if result.success:
-        print(f"\n Query berhasil")
+        print("\n Query berhasil")
         print(f"   Model   : {result.model}")
         print(f"   Latency : {result.latency_seconds}s")
         print(f"   Answer  : {result.answer[:150]}")
     else:
-        print(f"\n❌ Query gagal: {result.error_message}")
+        print(f"\n Query gagal: {result.error_message}")
         sys.exit(1)
 
     print("\n" + "=" * 60)

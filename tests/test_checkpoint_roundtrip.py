@@ -1,10 +1,3 @@
-"""Checkpoint serialization must preserve every field (E2).
-
-Regression: checkpoint save/load intentionally dropped provenance and nested
-data, so resuming a run rewrote thresholds/timestamps or produced
-``FaithfulnessResult`` objects with ``model=""`` and empty claims/evidence.
-"""
-
 import json
 import sys
 from dataclasses import asdict
@@ -14,10 +7,9 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from evaluators.faithfulness import FaithfulnessResult
 from pipeline import runner
 from pipeline.model_client import QueryOutput
-from evaluators.faithfulness import FaithfulnessResult
-
 
 CLAIMS = [
     {
@@ -232,14 +224,18 @@ def test_schema_2_checkpoint_without_nested_fields_is_ignored_and_rerun(
     )
 
     loaded = runner._load_checkpoint("mistral", "clean", "clean_001")
-    assert loaded is None, "schema-2 checkpoint must be ignored after the E2 format change"
+    assert loaded is None, (
+        "schema-2 checkpoint must be ignored after the E2 format change"
+    )
 
     case = {
         "id": "clean_001",
         "question": "Which HTTP method updates a resource?",
         "context": "PATCH is used to update a resource.",
     }
-    monkeypatch.setattr(runner, "_query_with_retry", lambda *a, **k: _make_query_output())
+    monkeypatch.setattr(
+        runner, "_query_with_retry", lambda *a, **k: _make_query_output()
+    )
 
     class DummyEvaluator:
         def evaluate(self, case, model_answer, model_name):

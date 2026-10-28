@@ -1,34 +1,84 @@
+# ═══════════════════════════════════════════════════════════════════════════════════════
+# LLM Evaluation Framework — Configuration
+# This file is the single source of configuration (YAML only).
+# Environment variables are NOT auto-applied by the loader.
+
+# ─────────────────────────────────────────────────────────────────────────────────────
+# SECTION 1: EVALUATION THRESHOLDS
+# ─────────────────────────────────────────────────────────────────────────────────────
 thresholds:
-  faithfulness_evidence: 0.68         
-  insufficient_ctx_validation: 0.65   
+  # Faithfulness: minimum evidence similarity score
+  faithfulness_evidence: 0.68
+
+  # Insufficient context validation threshold
+  insufficient_ctx_validation: 0.65
+
+  # Consistency metrics
   consistency_semantic: 0.72
   consistency_rouge_l: 0.40
-  robustness_sensitivity: 0.85
-  retrieval_dependency_change: 0.70    # jawaban berubah saat konteks dihapus/diganti
-  short_answer_max_words: 5          
-  short_answer_char_sim: 0.85         
 
+  # Robustness: sensitivity to perturbations
+  robustness_sensitivity: 0.85
+
+  # Retrieval dependency: answer change when context is removed/replaced
+  retrieval_dependency_change: 0.70
+
+  # Short answer detection
+  short_answer_max_words: 5
+  short_answer_char_sim: 0.85
+
+# ─────────────────────────────────────────────────────────────────────────────────────
+# SECTION 2: MODEL CONFIGURATION
+# ─────────────────────────────────────────────────────────────────────────────────────
 models:
-  default_eval: "mistral"
+  # Default model for evaluation (Ollama local)
+  default_eval: "phi3:mini"
+
+  # Default model for development (Ollama local)
   default_dev: "phi3:mini"
+
+  # Embedding model for consistency evaluation
   embedding: "nomic-embed-text"
 
+# ─────────────────────────────────────────────────────────────────────────────────────
+# SECTION 3: INFERENCE CONFIGURATION
+# ─────────────────────────────────────────────────────────────────────────────────────
 inference:
+  # Timeout for LLM inference (seconds)
   timeout_seconds: 900
-  max_retries: 3
-  retry_backoff_base: 2              
 
+  # Retry configuration
+  max_retries: 3
+  retry_backoff_base: 2
+
+# ─────────────────────────────────────────────────────────────────────────────────────
+# SECTION 4: PIPELINE CONFIGURATION
+# ─────────────────────────────────────────────────────────────────────────────────────
 pipeline:
   checkpoint_dir: "logs/checkpoints"
   results_dir: "reports/results"
 
+# ─────────────────────────────────────────────────────────────────────────────────────
+# SECTION 5: DATASET CONFIGURATION
+# ─────────────────────────────────────────────────────────────────────────────────────
 dataset:
   base_dir: "data/dataset"
 
+# ─────────────────────────────────────────────────────────────────────────────────────
+# SECTION 6: TECHNICAL TERM GROUPS (for evaluation)
+# ─────────────────────────────────────────────────────────────────────────────────────
+# Groups of terms that should be treated as semantically equivalent during evaluation
 technical_term_groups:
-  - ["put", "patch", "post", "get", "delete", "head", "options"]  
-  - ["200", "201", "204", "400", "401", "403", "404", "422", "500"] 
-  - ["sync", "async", "await"]                                      
-  - ["required", "optional"]                                        
-  - ["true", "false"]                                                
-  - ["json", "xml", "yaml", "toml"]                                
+  # HTTP methods
+  - ["put", "patch", "post", "get", "delete", "head", "options"]
+  # HTTP status codes
+  - ["200", "201", "204", "400", "401", "403", "404", "422", "500"]
+  # Async programming
+  - ["sync", "async", "await"]
+  # Parameter types
+  - ["required", "optional"]
+  # Boolean values
+  - ["true", "false"]
+  # Data formats
+  - ["json", "xml", "yaml", "toml"]
+# ═══════════════════════════════════════════════════════════════════════════════════════                                

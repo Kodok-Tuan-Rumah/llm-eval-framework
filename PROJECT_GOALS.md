@@ -1,8 +1,8 @@
 # LLM Eval Framework — Project Goals & Integration Spec
 
 > **Repo:** `llm-eval-framework`  
-> **Status:** Active Evaluation & Diagnostic Engine  
-> **Last Updated:** 2026-10-21  
+> **Status:** Active Evaluation & Diagnostic Engine — Integrated with MCP Gateway  
+> **Last Updated:** 2026-10-26  
 
 ---
 

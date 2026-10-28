@@ -1,30 +1,33 @@
-import sys
 import os
-import pytest
-from unittest.mock import patch, MagicMock
+import sys
+from unittest.mock import MagicMock, patch
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from reports.visualize import (
     _load_faithfulness_threshold,
-    load_latest,
-    load_latest_summary,
     chart_clean,
     chart_distractor,
+    load_latest,
+    load_latest_summary,
 )
+
 
 def test_load_faithfulness_threshold():
     thresh = _load_faithfulness_threshold()
     assert isinstance(thresh, float)
     assert 0.0 <= thresh <= 1.0
 
+
 def test_load_latest_nonexistent():
     res = load_latest("nonexistent-model", "clean")
     assert res == []
 
+
 def test_load_latest_summary_nonexistent():
     res = load_latest_summary("nonexistent-model", "clean")
     assert res == {}
+
 
 @patch("reports.visualize.plt")
 def test_chart_clean(mock_plt):
@@ -41,6 +44,7 @@ def test_chart_clean(mock_plt):
     mock_plt.subplots.assert_called_once()
     mock_plt.savefig.assert_called_once()
     mock_plt.close.assert_called_once()
+
 
 @patch("reports.visualize.plt")
 def test_chart_distractor(mock_plt):

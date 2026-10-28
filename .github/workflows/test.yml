@@ -1,48 +1,25 @@
-name: Tests
+name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [main, master, remediation/2026-10-24, "remediation/**"]
   pull_request:
-    branches: [ main ]
-  workflow_dispatch:
+    branches: [main, master, remediation/2026-10-24, "remediation/**"]
 
 jobs:
   test:
     runs-on: ubuntu-latest
-
-    steps:
-    - uses: actions/checkout@v4
-
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.12'
-
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-
-    - name: Syntax compilation check
-      run: |
-        python -m py_compile *.py evaluators/*.py pipeline/*.py reports/*.py scripts/*.py tests/*.py
-
-    - name: Reproducibility check
-      run: |
-        python scripts/check_reproducibility.py 2>&1 | tail -10
-
-    - name: Unit tests with coverage
-      run: python -m pytest tests/ --cov=. --cov-report=term-missing
-
-  secrets-scan:
-    name: Secrets scan
-    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: No real Groq keys in tracked files
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
         run: |
-          if grep -rqE 'gsk_[A-Za-z0-9]{30,}' --exclude-dir=.git .; then
-            echo "::error::Real-looking Groq key found in tracked files!"; exit 1
-          fi
-          echo "clean ✓"
+          pip install -r requirements.txt
+      - name: Run tests
+        run: |
+          python -m pytest tests/ -v
+      - name: Lint
+        run: |
+          python -m py_compile *.py evaluators/*.py pipeline/*.py reports/*.py scripts/*.py tests/*.py

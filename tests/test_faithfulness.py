@@ -1,35 +1,32 @@
-import sys
 import os
-import pytest
-import numpy as np
-from unittest.mock import MagicMock
+import sys
 from dataclasses import asdict
+from unittest.mock import MagicMock
+
+import numpy as np
+import pytest
 
 # Path setup
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from evaluators.faithfulness import (
-    ClaimExtractor,
-    EvidenceMatcher,
-    FaithfulnessEvaluator,
-    OllamaEmbedder,
-    Claim,
-    EvidenceMatch,
-    FaithfulnessResult,
     DEFAULT_SIMILARITY_THRESHOLD,
     INSUFFICIENT_VALIDATION_THRESHOLD,
+    Claim,
+    ClaimExtractor,
+    EvidenceMatch,
+    EvidenceMatcher,
+    FaithfulnessEvaluator,
+    FaithfulnessResult,
+    OllamaEmbedder,
     _contains_phrase,
 )
 
 
 def _config_threshold(name: str) -> float:
-    """Baca threshold langsung dari config.yaml.
-
-    Satu sumber kebenaran adalah config.yaml (prinsip config-driven di README);
-    test tidak boleh hardcode angka yang bisa di-recalibrate.
-    """
-    import yaml
     from pathlib import Path
+
+    import yaml
 
     config_path = Path(__file__).resolve().parent.parent / "config.yaml"
     with open(config_path, encoding="utf-8") as f:
@@ -56,7 +53,7 @@ def sample_case():
 
 @pytest.fixture
 def mock_embedder():
-    
+
     embedder = MagicMock(spec=OllamaEmbedder)
 
     def fake_embed(text: str) -> np.ndarray:
@@ -73,9 +70,11 @@ def mock_embedder():
     embedder.model = "nomic-embed-text-mock"
     return embedder
 
+
 @pytest.fixture
 def claim_extractor():
     return ClaimExtractor()
+
 
 # Test: ClaimExtractor
 class TestClaimExtractor:
@@ -131,7 +130,8 @@ class TestClaimExtractor:
         claims = claim_extractor.extract(answer, "test_008")
         for claim in claims:
             assert claim.source_answer == answer
-            
+
+
 # Test: EvidenceMatcher
 class TestEvidenceMatcher:
     def test_supported_claim(self, mock_embedder):
@@ -191,7 +191,9 @@ class TestEvidenceMatcher:
             )
         ]
 
-        context = "FastAPI uses Pydantic for data validation and supports async operations."
+        context = (
+            "FastAPI uses Pydantic for data validation and supports async operations."
+        )
         matches = matcher.match(claims, context)
 
         assert len(matches) == 1
@@ -206,7 +208,9 @@ class TestEvidenceMatcher:
 
     def test_evidence_match_structure(self, mock_embedder):
         matcher = EvidenceMatcher(embedder=mock_embedder, similarity_threshold=0.75)
-        claims = [Claim("c1", "FastAPI is a web framework.", "FastAPI is a web framework.")]
+        claims = [
+            Claim("c1", "FastAPI is a web framework.", "FastAPI is a web framework.")
+        ]
         matches = matcher.match(claims, "FastAPI is a modern web framework for Python.")
 
         assert len(matches) == 1
@@ -219,6 +223,7 @@ class TestEvidenceMatcher:
         assert hasattr(match, "threshold_used")
         assert match.threshold_used == 0.75
 
+
 # Test: FaithfulnessEvaluator
 class TestFaithfulnessEvaluator:
     def _make_evaluator(self, mock_embedder, threshold=0.75):
@@ -229,6 +234,7 @@ class TestFaithfulnessEvaluator:
         evaluator.embedder = mock_embedder
 
         from evaluators.faithfulness import EvidenceMatcher
+
         evaluator.matcher = EvidenceMatcher(
             embedder=mock_embedder,
             similarity_threshold=threshold,
@@ -239,7 +245,7 @@ class TestFaithfulnessEvaluator:
         evaluator = self._make_evaluator(mock_embedder)
 
         def high_sim_embed(text):
-            np.random.seed(42)  
+            np.random.seed(42)
             v = np.random.rand(768).astype(np.float32)
             return v / np.linalg.norm(v)
 
@@ -276,7 +282,7 @@ class TestFaithfulnessEvaluator:
             model_answer="Query parameters are converted to their declared Python type and validated.",
             model_name="test_model",
         )
-        
+
         assert hasattr(result, "case_id")
         assert hasattr(result, "model")
         assert hasattr(result, "faithfulness_score")
@@ -285,7 +291,7 @@ class TestFaithfulnessEvaluator:
         assert hasattr(result, "total_claims")
         assert hasattr(result, "supported_count")
         assert hasattr(result, "unsupported_count")
-        
+
         assert isinstance(result.faithfulness_score, float)
         assert isinstance(result.has_failure, bool)
         assert isinstance(result.failure_cases, list)
@@ -390,6 +396,7 @@ class TestFaithfulnessEvaluator:
         assert loaded[0]["case_id"] == "test_001"
         assert "faithfulness_score" in loaded[0]
 
+
 # Test: Diagnosis messages
 class TestDiagnosis:
     def test_diagnosis_high_score(self, mock_embedder):
@@ -419,7 +426,10 @@ class TestDiagnosis:
         evaluator = FaithfulnessEvaluator.__new__(FaithfulnessEvaluator)
         evaluator.similarity_threshold = 0.75
         diagnosis = evaluator._diagnose_failure(match)
-        assert "hallucination" in diagnosis.lower() or "no relevant" in diagnosis.lower()
+        assert (
+            "hallucination" in diagnosis.lower() or "no relevant" in diagnosis.lower()
+        )
+
 
 # Test: short-answer context matching helper
 class TestContainsPhrase:
@@ -430,13 +440,18 @@ class TestContainsPhrase:
         assert _contains_phrase("use patch to update", "patch") is True
 
     def test_matches_multiword_phrase(self):
-        assert _contains_phrase("returns a json response object", "json response") is True
+        assert (
+            _contains_phrase("returns a json response object", "json response") is True
+        )
 
     def test_empty_needle_never_matches(self):
         assert _contains_phrase("anything", "") is False
 
     def test_singular_phrase_not_matched_inside_plural(self):
-        assert _contains_phrase("query parameters are strings", "query parameter") is False
+        assert (
+            _contains_phrase("query parameters are strings", "query parameter") is False
+        )
+
 
 # Test: Constants
 class TestConstants:
@@ -447,8 +462,13 @@ class TestConstants:
         assert INSUFFICIENT_VALIDATION_THRESHOLD < DEFAULT_SIMILARITY_THRESHOLD
 
     def test_threshold_values(self):
-        assert DEFAULT_SIMILARITY_THRESHOLD == _config_threshold("faithfulness_evidence")
-        assert INSUFFICIENT_VALIDATION_THRESHOLD == _config_threshold("insufficient_ctx_validation")
+        assert DEFAULT_SIMILARITY_THRESHOLD == _config_threshold(
+            "faithfulness_evidence"
+        )
+        assert INSUFFICIENT_VALIDATION_THRESHOLD == _config_threshold(
+            "insufficient_ctx_validation"
+        )
+
 
 # Integration-style test
 class TestIntegration:
@@ -458,13 +478,14 @@ class TestIntegration:
         evaluator.embedding_model = "mock"
         evaluator.extractor = ClaimExtractor()
         evaluator.embedder = mock_embedder
-        
+
         from evaluators.faithfulness import EvidenceMatcher
+
         evaluator.matcher = EvidenceMatcher(
             embedder=mock_embedder,
             similarity_threshold=0.75,
         )
-        
+
         answer = (
             "Query parameters declared with Python types are converted to that type"
             "and validated against it."
@@ -474,12 +495,15 @@ class TestIntegration:
             model_answer=answer,
             model_name="integration_test",
         )
-        
+
         assert result is not None
         assert result.case_id == sample_case["id"]
         assert 0.0 <= result.faithfulness_score <= 1.0
         assert result.total_claims >= 1
-        assert result.supported_count + result.unsupported_count + result.skipped_count == result.total_claims
+        assert (
+            result.supported_count + result.unsupported_count + result.skipped_count
+            == result.total_claims
+        )
         result_dict = asdict(result)
         assert isinstance(result_dict, dict)
         assert "faithfulness_score" in result_dict

@@ -1,10 +1,3 @@
-"""Regression tests for checkpoint schema version + completeness gate.
-
-Bug: checkpoint dengan ``faithfulness_result: null`` dianggap selesai, lalu
-``_checkpoint_to_faithfulness_result`` crash saat resume. Checkpoint yang
-tidak lengkap / schema lama / corrupt harus diabaikan dan case dijalankan ulang.
-"""
-
 import json
 import sys
 from pathlib import Path
@@ -13,8 +6,8 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from pipeline import runner
 from evaluators.faithfulness import FaithfulnessResult
+from pipeline import runner
 
 
 def _complete_faithfulness(case_id: str = "case_1", score: float = 0.8) -> dict:
@@ -163,10 +156,16 @@ def test_resume_after_null_checkpoint_reruns_case(tmp_path, monkeypatch):
 
     def fake_query_template(client, case, case_type):
         from pipeline.model_client import QueryOutput
+
         return QueryOutput(
-            case_id=case["id"], model="mistral", question=case["question"],
-            context_length_chars=len(case["context"]), answer="ans",
-            latency_seconds=0.1, timestamp_utc="2026-01-01T00:00:00Z", success=True,
+            case_id=case["id"],
+            model="mistral",
+            question=case["question"],
+            context_length_chars=len(case["context"]),
+            answer="ans",
+            latency_seconds=0.1,
+            timestamp_utc="2026-01-01T00:00:00Z",
+            success=True,
         )
 
     class DummyClient:
@@ -192,12 +191,20 @@ def test_resume_after_null_checkpoint_reruns_case(tmp_path, monkeypatch):
         def evaluate(self, case, model_answer, model_name):
             evaluated.append(case["id"])
             return FaithfulnessResult(
-                case_id=case["id"], model=model_name, question=case["question"],
-                answer=model_answer, context_preview=case["context"],
-                total_claims=1, claims=[], evidence_matches=[],
-                supported_count=1, unsupported_count=0, skipped_count=0,
+                case_id=case["id"],
+                model=model_name,
+                question=case["question"],
+                answer=model_answer,
+                context_preview=case["context"],
+                total_claims=1,
+                claims=[],
+                evidence_matches=[],
+                supported_count=1,
+                unsupported_count=0,
+                skipped_count=0,
                 faithfulness_score=0.7,
-                is_insufficient_context_response=False, has_failure=False,
+                is_insufficient_context_response=False,
+                has_failure=False,
                 failure_cases=[],
                 similarity_threshold=self.similarity_threshold,
                 embedding_model="nomic-embed-text",
@@ -220,17 +227,25 @@ def test_resume_after_null_checkpoint_reruns_case(tmp_path, monkeypatch):
             Path(output_path).write_text(json.dumps(out), encoding="utf-8")
 
     # Checkpoint lama/rusak: schema current tapi faithfulness_result null.
-    runner._save_checkpoint("mistral", "clean", "case_1", {
-        "case_id": "case_1",
-        "model": "mistral",
-        "dataset": "clean",
-        "timestamp_utc": "2026-01-01T00:00:00Z",
-        "query_result": {
-            "case_id": "case_1", "success": True, "answer": "a1",
-            "latency_seconds": 0.1, "error_message": None,
+    runner._save_checkpoint(
+        "mistral",
+        "clean",
+        "case_1",
+        {
+            "case_id": "case_1",
+            "model": "mistral",
+            "dataset": "clean",
+            "timestamp_utc": "2026-01-01T00:00:00Z",
+            "query_result": {
+                "case_id": "case_1",
+                "success": True,
+                "answer": "a1",
+                "latency_seconds": 0.1,
+                "error_message": None,
+            },
+            "faithfulness_result": None,
         },
-        "faithfulness_result": None,
-    })
+    )
 
     monkeypatch.setattr(runner, "_query_with_template", fake_query_template)
     monkeypatch.setattr(runner, "OllamaClient", DummyClient)

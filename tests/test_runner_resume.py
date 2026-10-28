@@ -1,43 +1,46 @@
-"""Regression tests for checkpoint resume bug + resume-safe save (Day 3 & Hari 4).
-
-Bug awal: run_evaluation dengan resume=True men-drop kasus dari checkpoint
-dari output faithfulness.
-
-Fix: loop resume meng-append FaithfulnessResult (dari checkpoint) + hasil
-baru, lalu menyimpan merged list.
-
-Strategi:
-- Unit: checkpoint roundtrip + merged save benar.
-- Integration: full run_evaluation dengan mock → output faithfulness berisi
-  semua case (checkpointed + baru).
-"""
-
 import json
 import sys
 from pathlib import Path
 
-import pytest
-
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from pipeline import runner
 from evaluators.faithfulness import FaithfulnessResult
+from pipeline import runner
 
 
-def _make_faithfulness_result(case_id: str, score: float, has_failure: bool = False) -> FaithfulnessResult:
+def _make_faithfulness_result(
+    case_id: str, score: float, has_failure: bool = False
+) -> FaithfulnessResult:
     return FaithfulnessResult(
-        case_id=case_id, model="mistral", question=f"q-{case_id}", answer="a", context_preview="ctx",
-        total_claims=1, claims=[], evidence_matches=[],
-        supported_count=1 if score > 0 else 0, unsupported_count=1 if score > 0 else 0, skipped_count=0,
+        case_id=case_id,
+        model="mistral",
+        question=f"q-{case_id}",
+        answer="a",
+        context_preview="ctx",
+        total_claims=1,
+        claims=[],
+        evidence_matches=[],
+        supported_count=1 if score > 0 else 0,
+        unsupported_count=1 if score > 0 else 0,
+        skipped_count=0,
         faithfulness_score=score,
-        is_insufficient_context_response=False, has_failure=has_failure, failure_cases=[{"diagnosis": "x"}] if has_failure else [],
-        similarity_threshold=0.68, embedding_model="nomic-embed-text", evaluator_version="1.2.2",
-        timestamp_utc="2026-01-01T00:00:00Z", evaluation_path="claim_extraction",
+        is_insufficient_context_response=False,
+        has_failure=has_failure,
+        failure_cases=[{"diagnosis": "x"}] if has_failure else [],
+        similarity_threshold=0.68,
+        embedding_model="nomic-embed-text",
+        evaluator_version="1.2.2",
+        timestamp_utc="2026-01-01T00:00:00Z",
+        evaluation_path="claim_extraction",
     )
 
 
-def _complete_faithfulness_dict(case_id: str, score: float, has_failure: bool = False,
-                                failure_cases: list | None = None) -> dict:
+def _complete_faithfulness_dict(
+    case_id: str,
+    score: float,
+    has_failure: bool = False,
+    failure_cases: list | None = None,
+) -> dict:
     """Checkpoint faithfulness payload yang lolos completeness gate."""
     return {
         "case_id": case_id,
@@ -62,12 +65,23 @@ def test_checkpoint_roundtrip(tmp_path):
     cdir.mkdir()
     runner.CHECKPOINT_DIR = cdir
 
-    runner._save_checkpoint("mistral", "clean", "case_1", {
-        "query_result": {"case_id": "case_1", "success": True, "answer": "a1", "latency_seconds": 0.1, "error_message": None},
-        "faithfulness_result": _complete_faithfulness_dict(
-            "case_1", 0.8, has_failure=True, failure_cases=[{"diagnosis": "cached"}]
-        ),
-    })
+    runner._save_checkpoint(
+        "mistral",
+        "clean",
+        "case_1",
+        {
+            "query_result": {
+                "case_id": "case_1",
+                "success": True,
+                "answer": "a1",
+                "latency_seconds": 0.1,
+                "error_message": None,
+            },
+            "faithfulness_result": _complete_faithfulness_dict(
+                "case_1", 0.8, has_failure=True, failure_cases=[{"diagnosis": "cached"}]
+            ),
+        },
+    )
     loaded = runner._load_checkpoint("mistral", "clean", "case_1")
     assert loaded is not None
     assert loaded["faithfulness_result"]["faithfulness_score"] == 0.8
@@ -86,13 +100,15 @@ def test_merged_save_contains_checkpointed_and_new(tmp_path):
         def save_results(self, results_list, output_path):
             out = []
             for r in results_list:
-                out.append({
-                    "case_id": r.case_id,
-                    "faithfulness_score": r.faithfulness_score,
-                    "has_failure": r.has_failure,
-                    "is_insufficient_context_response": r.is_insufficient_context_response,
-                    "failure_cases": r.failure_cases,
-                })
+                out.append(
+                    {
+                        "case_id": r.case_id,
+                        "faithfulness_score": r.faithfulness_score,
+                        "has_failure": r.has_failure,
+                        "is_insufficient_context_response": r.is_insufficient_context_response,
+                        "failure_cases": r.failure_cases,
+                    }
+                )
             Path(output_path).write_text(json.dumps(out))
 
     merged = [
@@ -124,49 +140,93 @@ def test_run_evaluation_resume_merges_checkpointed_and_new(tmp_path, monkeypatch
 
     def fake_query_template(client, case, case_type):
         from pipeline.model_client import QueryOutput
+
         return QueryOutput(
-            case_id=case["id"], model="mistral", question=case["question"],
-            context_length_chars=len(case["context"]), answer="ans",
-            latency_seconds=0.1, timestamp_utc="2026-01-01T00:00:00Z", success=True,
+            case_id=case["id"],
+            model="mistral",
+            question=case["question"],
+            context_length_chars=len(case["context"]),
+            answer="ans",
+            latency_seconds=0.1,
+            timestamp_utc="2026-01-01T00:00:00Z",
+            success=True,
         )
 
     class DummyClient:
         def __init__(self, *a, **kw):
-            self.model = "mistral"; self.temperature = 0.0; self.max_tokens = 4096
-            self._endpoint = "http://localhost:11434/api/chat"; self.timeout_seconds = 900
-        def health_check(self): return True
+            self.model = "mistral"
+            self.temperature = 0.0
+            self.max_tokens = 4096
+            self._endpoint = "http://localhost:11434/api/chat"
+            self.timeout_seconds = 900
+
+        def health_check(self):
+            return True
 
     class DummyFaith:
         VERSION = "1.2.2"
+
         def __init__(self, similarity_threshold=None):
             self.similarity_threshold = similarity_threshold
-        def health_check(self): return True
+
+        def health_check(self):
+            return True
+
         def evaluate(self, case, model_answer, model_name):
             return _make_faithfulness_result(case["id"], 1.0)
+
         def save_results(self, results_list, output_path):
             out = []
             for r in results_list:
-                out.append({
-                    "case_id": r.case_id, "faithfulness_score": r.faithfulness_score,
-                    "has_failure": r.has_failure,
-                    "is_insufficient_context_response": r.is_insufficient_context_response,
-                    "failure_cases": r.failure_cases,
-                })
+                out.append(
+                    {
+                        "case_id": r.case_id,
+                        "faithfulness_score": r.faithfulness_score,
+                        "has_failure": r.has_failure,
+                        "is_insufficient_context_response": r.is_insufficient_context_response,
+                        "failure_cases": r.failure_cases,
+                    }
+                )
             Path(output_path).write_text(json.dumps(out))
 
     # checkpoint untuk case_1 & case_2
-    runner._save_checkpoint("mistral", "clean", "case_1", {
-        "query_result": {"case_id": "case_1", "success": True, "answer": "a1", "latency_seconds": 0.1, "error_message": None},
-        "faithfulness_result": _complete_faithfulness_dict(
-            "case_1", 0.8, has_failure=True, failure_cases=[{"diagnosis": "cached"}]
-        ),
-    })
-    runner._save_checkpoint("mistral", "clean", "case_2", {
-        "query_result": {"case_id": "case_2", "success": True, "answer": "a2", "latency_seconds": 0.1, "error_message": None},
-        "faithfulness_result": _complete_faithfulness_dict(
-            "case_2", 0.9, has_failure=True, failure_cases=[{"diagnosis": "cached2"}]
-        ),
-    })
+    runner._save_checkpoint(
+        "mistral",
+        "clean",
+        "case_1",
+        {
+            "query_result": {
+                "case_id": "case_1",
+                "success": True,
+                "answer": "a1",
+                "latency_seconds": 0.1,
+                "error_message": None,
+            },
+            "faithfulness_result": _complete_faithfulness_dict(
+                "case_1", 0.8, has_failure=True, failure_cases=[{"diagnosis": "cached"}]
+            ),
+        },
+    )
+    runner._save_checkpoint(
+        "mistral",
+        "clean",
+        "case_2",
+        {
+            "query_result": {
+                "case_id": "case_2",
+                "success": True,
+                "answer": "a2",
+                "latency_seconds": 0.1,
+                "error_message": None,
+            },
+            "faithfulness_result": _complete_faithfulness_dict(
+                "case_2",
+                0.9,
+                has_failure=True,
+                failure_cases=[{"diagnosis": "cached2"}],
+            ),
+        },
+    )
 
     monkeypatch.setattr(runner, "_query_with_template", fake_query_template)
     monkeypatch.setattr(runner, "OllamaClient", DummyClient)
@@ -178,4 +238,6 @@ def test_run_evaluation_resume_merges_checkpointed_and_new(tmp_path, monkeypatch
     assert files, "output file not created"
     data = json.loads(files[-1].read_text())
     case_ids = {d["case_id"] for d in data}
-    assert case_ids == {"case_1", "case_2", "case_3"}, f"expected 3 cases, got {sorted(case_ids)}"
+    assert case_ids == {"case_1", "case_2", "case_3"}, (
+        f"expected 3 cases, got {sorted(case_ids)}"
+    )

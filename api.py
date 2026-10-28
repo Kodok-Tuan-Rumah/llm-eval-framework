@@ -1,24 +1,16 @@
-from fastapi import FastAPI, HTTPException, Request, Response
-from pydantic import BaseModel
-from typing import Optional
-from contextlib import asynccontextmanager
 import logging
 import time
 import uuid
-
-from prometheus_client import (
-    CONTENT_TYPE_LATEST,
-    Counter,
-    Histogram,
-    generate_latest,
-)
+from contextlib import asynccontextmanager
 
 from evaluators.faithfulness import FaithfulnessEvaluator
+from fastapi import FastAPI, HTTPException, Request, Response
+from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_latest
+from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
-
-# Init evaluator sekali saat startup — berat kalau tiap request
 evaluator = None
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -28,10 +20,9 @@ async def lifespan(app: FastAPI):
     logger.info("FaithfulnessEvaluator ready")
     yield
 
+
 app = FastAPI(title="LLM Eval Service", version="1.0.0", lifespan=lifespan)
 
-# Keep the same histogram name/labels as the other Go/Python services so the
-# workspace Grafana overview can aggregate all jobs with one PromQL expression.
 HTTP_REQUEST_DURATION = Histogram(
     "http_request_duration_seconds",
     "HTTP request duration in seconds",
@@ -56,10 +47,12 @@ async def observe_http_requests(request: Request, call_next):
             path=request.url.path,
         ).observe(time.perf_counter() - started)
 
+
 class EvalRequest(BaseModel):
     answer: str
     context: str
     question: str
+
 
 class EvalResponse(BaseModel):
     faithfulness_score: float
@@ -69,6 +62,7 @@ class EvalResponse(BaseModel):
     total_claims: int
     evaluator_version: str
 
+
 @app.get("/health")
 def health():
     return {"status": "ok", "service": "llm-eval-framework"}
@@ -77,9 +71,13 @@ def health():
 @app.get("/ready")
 def ready():
     if evaluator is None:
-        raise HTTPException(status_code=503, detail="FaithfulnessEvaluator not initialized")
+        raise HTTPException(
+            status_code=503, detail="FaithfulnessEvaluator not initialized"
+        )
     if not evaluator.health_check(timeout=2.0):
-        raise HTTPException(status_code=503, detail="Ollama embedding dependency unavailable")
+        raise HTTPException(
+            status_code=503, detail="Ollama embedding dependency unavailable"
+        )
     return {"status": "ready", "service": "llm-eval-framework", "check": "readiness"}
 
 
@@ -87,12 +85,13 @@ def ready():
 def metrics():
     return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
+
 @app.post("/evaluate", response_model=EvalResponse)
 def evaluate(req: EvalRequest):
     if evaluator is None:
         raise HTTPException(
             status_code=503,
-            detail="FaithfulnessEvaluator belum diinisialisasi. Tunggu startup selesai atau coba lagi dalam beberapa saat."
+            detail="FaithfulnessEvaluator belum diinisialisasi. Tunggu startup selesai atau coba lagi dalam beberapa saat.",
         )
     if not req.answer.strip():
         raise HTTPException(status_code=400, detail="answer cannot be empty")

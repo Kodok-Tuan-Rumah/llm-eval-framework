@@ -1,5 +1,5 @@
-import sys
 import os
+import sys
 from unittest.mock import MagicMock
 
 import pytest
@@ -44,6 +44,7 @@ def stub_evaluator(monkeypatch):
         evaluator.evaluate.return_value = result
         monkeypatch.setattr(api_module, "evaluator", evaluator)
         return evaluator
+
     return _install
 
 
@@ -68,20 +69,27 @@ class TestEvaluateEndpoint:
         assert response.failure_mode == "none"
 
     def test_failure_mode_unsupported_claims(self, stub_evaluator):
-        stub_evaluator(_fake_result(
-            faithfulness_score=0.0, has_failure=True,
-            supported_count=0, unsupported_count=3,
-        ))
+        stub_evaluator(
+            _fake_result(
+                faithfulness_score=0.0,
+                has_failure=True,
+                supported_count=0,
+                unsupported_count=3,
+            )
+        )
         response = api_module.evaluate(
             api_module.EvalRequest(answer="bad answer", context="ctx", question="q")
         )
         assert response.failure_mode == "unsupported_claims"
 
     def test_failure_mode_insufficient_context(self, stub_evaluator):
-        stub_evaluator(_fake_result(
-            faithfulness_score=0.0, has_failure=True,
-            is_insufficient_context_response=True,
-        ))
+        stub_evaluator(
+            _fake_result(
+                faithfulness_score=0.0,
+                has_failure=True,
+                is_insufficient_context_response=True,
+            )
+        )
         response = api_module.evaluate(
             api_module.EvalRequest(
                 answer="INSUFFICIENT_CONTEXT", context="ctx", question="q"

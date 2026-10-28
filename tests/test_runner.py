@@ -1,6 +1,6 @@
 import json
-import sys
 import os
+import sys
 
 import pytest
 
@@ -52,20 +52,23 @@ class TestLoadJsonCasesValidation:
             _load_json_cases(path, "test")
 
     def test_case_missing_id_rejected(self, tmp_path):
-        path = self._write(
-            tmp_path, {"cases": [{"context": "ctx", "question": "q"}]}
-        )
+        path = self._write(tmp_path, {"cases": [{"context": "ctx", "question": "q"}]})
         with pytest.raises(ValueError, match="missing required fields"):
             _load_json_cases(path, "test")
 
     def test_variant_missing_question_rejected(self, tmp_path):
-        path = self._write(tmp_path, {
-            "cases": [{
-                "id": "x",
-                "context": "ctx",
-                "variants": [{"label": "original"}],
-            }]
-        })
+        path = self._write(
+            tmp_path,
+            {
+                "cases": [
+                    {
+                        "id": "x",
+                        "context": "ctx",
+                        "variants": [{"label": "original"}],
+                    }
+                ]
+            },
+        )
         with pytest.raises(ValueError, match="variant missing required fields"):
             _load_json_cases(path, "test")
 
