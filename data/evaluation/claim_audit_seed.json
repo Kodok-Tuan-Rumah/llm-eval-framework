@@ -1,0 +1,796 @@
+{
+  "metadata": {
+    "dataset_name": "Claim-Audit Manuscript Seed — v1",
+    "source": "manual curation — scientific claim auditor domain",
+    "language": "bilingual — context: English, annotation: Indonesian",
+    "case_type": "claim_audit_seed",
+    "description_id": "Dataset berlabel klaim-manuskrip untuk kalibrasi isotonic (P1) dan verifikasi failure_mode timeout/abstain. Setiap sampel berisi klaim dari naskah user yang diverifikasi terhadap konteks bukti dari RAG.",
+    "total_cases": 52,
+    "schema_version": "1.0",
+    "created_by": "manual curation",
+    "eval_dimensions": ["faithfulness", "abstention", "timeout_handling"],
+    "note": "Jalur refit isotonic P1 tetap — file ini hanya seed awal, tidak mengganti data pelatihan isotonic yang ada."
+  },
+  "cases": [
+    {
+      "id": "seed_001",
+      "type": "audit",
+      "topic": "Multi-head attention subspace",
+      "context": "Multi-head attention allows the model to jointly attend to information from different representation subspaces at different positions. Each head computes its own attention scores independently, and the outputs are concatenated and linearly transformed.",
+      "question": "Multi-head attention memungkinkan model untuk memperhatikan berbagai sub-ruang representasi secara bersamaan pada posisi yang berbeda.",
+      "ground_truth": "Multi-head attention allows the model to jointly attend to information from different representation subspaces at different positions.",
+      "evidence_span": "jointly attend to information from different representation subspaces at different positions",
+      "annotation": {
+        "id": "anotasi_seed_001",
+        "kesulitan": "mudah",
+        "catatan": "Klaim sangat paralel dengan konteks. Harus didukung (supported).",
+        "red_flag_jika": "Model menandai sebagai tidak didukung atau menghasilkan jawaban yang tidak terkait."
+      }
+    },
+    {
+      "id": "seed_002",
+      "type": "audit",
+      "topic": "Self-attention vs cross-attention",
+      "context": "Self-attention computes attention within a single sequence, relating different positions of the same input to each other. Cross-attention attends to a different sequence, commonly used in encoder-decoder architectures.",
+      "question": "Self-attention digunakan untuk menghubungkan posisi yang berbeda dalam satu urutan input yang sama.",
+      "ground_truth": "Self-attention computes attention within a single sequence, relating different positions of the same input to each other.",
+      "evidence_span": "computes attention within a single sequence, relating different positions of the same input to each other",
+      "annotation": {
+        "id": "anotasi_seed_002",
+        "kesulitan": "mudah",
+        "catatan": "Definisi self-attention cocok tepat dengan konteks.",
+        "red_flag_jika": "Model membingungkan self-attention dengan cross-attention."
+      }
+    },
+    {
+      "id": "seed_003",
+      "type": "audit",
+      "topic": "Positional encoding necessity",
+      "context": "Because the self-attention mechanism contains no recurrence or convolution, it has no inherent notion of sequence order. Positional encodings are injected to give the model information about absolute or relative position of tokens.",
+      "question": "Mekanisme self-attention tidak memiliki noisasi urutan secara bawaan sehingga membutuhkan positional encoding.",
+      "ground_truth": "The self-attention mechanism contains no recurrence or convolution, it has no inherent notion of sequence order. Positional encodings are injected to give the model information about absolute or relative position of tokens.",
+      "evidence_span": "contains no recurrence or convolution, it has no inherent notion of sequence order",
+      "annotation": {
+        "id": "anotasi_seed_003",
+        "kesulitan": "sedang",
+        "catatan": "Klaim tentang absence of recurrence/order harus didukung konteks.",
+        "red_flag_jika": "Model mengatakan self-attention sudah tahu urutan tanpa positional encoding."
+      }
+    },
+    {
+      "id": "seed_004",
+      "type": "audit",
+      "topic": "Scaled dot-product attention denominator",
+      "context": "We scale the dot products by the square root of the dimension of the key vectors, d_k. For large values of d_k, the dot products grow large in magnitude, pushing the softmax into regions with extremely small gradients.",
+      "question": "Dot produk diperbesar dengan akar kuadrat dari dimensi vektor kunci d_k untuk mencegah gradient sangat kecil pada softmax.",
+      "ground_truth": "We scale the dot products by the square root of the dimension of the key vectors, d_k. For large values of d_k, the dot products grow large in magnitude, pushing the softmax into regions with extremely small gradients.",
+      "evidence_span": "scale the dot products by the square root of the dimension of the key vectors, d_k",
+      "annotation": {
+        "id": "anotasi_seed_004",
+        "kesulitan": "sedang",
+        "catatan": "Alasan scaling (mencegah small gradients) disebutkan eksplisit.",
+        "red_flag_jika": "Model menyebut alasan lain, mis. untuk normalisasi panjang vektor saja."
+      }
+    },
+    {
+      "id": "seed_005",
+      "type": "audit",
+      "topic": "Residual connection around attention",
+      "context": "We apply dropout to the output of each sub-layer, before it is added to the sub-layer input and normalized. Residual connections help train very deep networks by mitigating the vanishing gradient problem.",
+      "question": "Residual connections membantu melatih jaringan sangat dalam dengan mengurangi masalah gradient hilang.",
+      "ground_truth": "Residual connections help train very deep networks by mitigating the vanishing gradient problem.",
+      "evidence_span": "Residual connections help train very deep networks by mitigating the vanishing gradient problem",
+      "annotation": {
+        "id": "anotasi_seed_005",
+        "kesulitan": "mudah",
+        "catatan": "Manfaat residual connection dijelaskan eksplisit.",
+        "red_flag_jika": "Model menafsirkan residual connection sebagai sesuatu yang berlawanan."
+      }
+    },
+    {
+      "id": "seed_006",
+      "type": "audit",
+      "topic": "Feed-forward network per position",
+      "context": "In addition to attention sub-layers, each of the layers in our encoder and decoder contains a fully connected feed-forward network, which is applied to each position separately and identically.",
+      "question": "Setiap lapisan encoder dan decoder menyertakan jaringan syaraf masukan maju yang diterapkan pada setiap posisi secara terpisah dan identik.",
+      "ground_truth": "each of the layers in our encoder and decoder contains a fully connected feed-forward network, which is applied to each position separately and identically.",
+      "evidence_span": "applied to each position separately and identically",
+      "annotation": {
+        "id": "anotasi_seed_006",
+        "kesulitan": "sedang",
+        "catatan": "Klaim tentang FFN diterapkan per posisi identik.",
+        "red_flag_jika": "Model mengklaim FFN dibagikan lintas posisi dengan bobot berbeda."
+      }
+    },
+    {
+      "id": "seed_007",
+      "type": "audit",
+      "topic": "Label smoothing effect",
+      "context": "We use label smoothing with value 0.1. This makes the model less confident in its predictions and prevents it from overfitting to the training data. It also improves BLEU scores on the test set.",
+      "question": "Label smoothing dengan nilai 0.1 membuat model lebih yakin pada prediksi dan mencegah overfitting.",
+      "ground_truth": "This makes the model less confident in its predictions and prevents it from overfitting to the training data.",
+      "evidence_span": "makes the model less confident in its predictions and prevents it from overfitting",
+      "annotation": {
+        "id": "anotasi_seed_007",
+        "kesulitan": "sulit",
+        "catatan": "Klaim ini SALAH terhadap konteks (less confident, bukan lebih yakin). Harus dideteksi sebagai tidak didukung.",
+        "red_flag_jika": "Model mengakui klaim sebagai benar meskipun konteks mengatakan sebaliknya."
+      }
+    },
+    {
+      "id": "seed_008",
+      "type": "audit",
+      "topic": "Adam optimizer betas",
+      "context": "We use the Adam optimizer with beta_1 = 0.9, beta_2 = 0.98 and epsilon = 1e-9. The learning rate varies according to the formula described in the paper.",
+      "question": "Optimizer Adam digunakan dengan beta_1 = 0.9, beta_2 = 0.98 dan epsilon = 1e-9.",
+      "ground_truth": "We use the Adam optimizer with beta_1 = 0.9, beta_2 = 0.98 and epsilon = 1e-9.",
+      "evidence_span": "beta_1 = 0.9, beta_2 = 0.98 and epsilon = 1e-9",
+      "annotation": {
+        "id": "anotasi_seed_008",
+        "kesulitan": "mudah",
+        "catatan": "Nilai hyperparameter cocok tepat, harus didukung.",
+        "red_flag_jika": "Model mengubah salah satu nilai hyperparameter."
+      }
+    },
+    {
+      "id": "seed_009",
+      "type": "audit",
+      "topic": "Warmup learning rate schedule",
+      "context": "The learning rate is increased linearly for the first warmup_steps training steps, and decreased proportionally to the inverse square root of the step number.",
+      "question": "Pembelajaraningkat ditingkatkan secara linear selama langkah pemanasan awal lalu menurun berbanding terbalik dengan akar kuadrat langkah.",
+      "ground_truth": "The learning rate is increased linearly for the first warmup_steps training steps, and decreased proportionally to the inverse square root of the step number.",
+      "evidence_span": "increased linearly for the first warmup_steps training steps",
+      "annotation": {
+        "id": "anotasi_seed_009",
+        "kesulitan": "sedang",
+        "catatan": "Jadwal learning rate dua fasa disebutkan dalam konteks.",
+        "red_flag_jika": "Model mengatakan learning rate konstan atau menurun monoton tanpa pemanasan."
+      }
+    },
+    {
+      "id": "seed_010",
+      "type": "audit",
+      "topic": "Encoder-decoder attention",
+      "context": "In the decoder, the attention layers attend to the output of the encoder stack. This allows the decoder to focus on relevant parts of the source sequence when generating each target token.",
+      "question": "Lapisan perhatian dalam decoder memperhatikan keluaran tumpukan encoder agar dapat fokus pada bagian yang relevan dari urutan sumber saat menghasilkan setiap token sasaran.",
+      "ground_truth": "In the decoder, the attention layers attend to the output of the encoder stack. This allows the decoder to focus on relevant parts of the source sequence when generating each target token.",
+      "evidence_span": "attend to the output of the encoder stack",
+      "annotation": {
+        "id": "anotasi_seed_010",
+        "kesulitan": "sedang",
+        "catatan": "Fungsi attention dalam decoder dijelaskan jelas.",
+        "red_flag_jika": "Model mengatakan decoder tidak menggunakan output encoder."
+      }
+    },
+    {
+      "id": "seed_011",
+      "type": "audit",
+      "topic": "Masked multi-head attention decoder",
+      "context": "In the decoder, we modify the self-attention sub-layer to prevent positions from attending to subsequent positions. This masking, combined with the fact that the output embeddings are offset by one position, ensures that a prediction for position i can depend only on the known outputs at positions less than i.",
+      "question": "Decoder mencegah posisi untuk memperhatikan posisi setelahnya melalui masking pada self-attention.",
+      "ground_truth": "we modify the self-attention sub-layer to prevent positions from attending to subsequent positions.",
+      "evidence_span": "prevent positions from attending to subsequent positions",
+      "annotation": {
+        "id": "anotasi_seed_011",
+        "kesulitan": "sedang",
+        "catatan": "Masking causal dalam decoder disebutkan eksplisit.",
+        "red_flag_jika": "Model mengklaim decoder dapat melihat posisi masa depan."
+      }
+    },
+    {
+      "id": "seed_012",
+      "type": "audit",
+      "topic": "Output softmax linear layer",
+      "context": "The output of the decoder is passed through a linear layer followed by a softmax to produce probabilities over the vocabulary. The weights of this linear layer are shared with the embedding matrix.",
+      "question": "Keluaran decoder dilewatkan melalui lapisan linear lalu softmax untuk menghasilkan probabilitas atas kosakata, dan bobot lapisan linear dibagikan dengan matriks embeddings.",
+      "ground_truth": "The output of the decoder is passed through a linear layer followed by a softmax to produce probabilities over the vocabulary. The weights of this linear layer are shared with the embedding matrix.",
+      "evidence_span": "weights of this linear layer are shared with the embedding matrix",
+      "annotation": {
+        "id": "anotasi_seed_012",
+        "kesulitan": "sedang",
+        "catatan": "Weight sharing antara output linear dan embedding disebutkan.",
+        "red_flag_jika": "Model mengatakan bobot lapisan output tidak dibagikan."
+      }
+    },
+    {
+      "id": "seed_013",
+      "type": "audit",
+      "topic": "Layer normalization position",
+      "context": "We apply layer normalization to the output of each sub-layer, after the residual connection is added. The output of each sub-layer is LayerNorm(x + Sublayer(x)).",
+      "question": "Layer normalization diterapkan pada keluaran setiap sub-lapis setelah koneksi residual ditambah, berbentuk LayerNorm(x + Sublayer(x)).",
+      "ground_truth": "The output of each sub-layer is LayerNorm(x + Sublayer(x)).",
+      "evidence_span": "LayerNorm(x + Sublayer(x))",
+      "annotation": {
+        "id": "anotasi_seed_013",
+        "kesulitan": "sulit",
+        "catatan": "Posisi layer normalization (post-residual) harus dibaca dari konteks.",
+        "red_flag_jika": "Model mengatakan layer normalization diterapkan sebelum residual (pre-norm)."
+      }
+    },
+    {
+      "id": "seed_014",
+      "type": "audit",
+      "topic": "Positional encoding sine cosine",
+      "context": "We use sine and cosine functions of different frequencies for positional encoding: PE(pos, 2i) = sin(pos/10000^(2i/d_model)) and PE(pos, 2i+1) = cos(pos/10000^(2i/d_model)).",
+      "question": "Positional encoding menggunakan fungsi sinus dan cosinus dengan berbagai frekuensi sesuai rumus PE(pos, 2i) dan PE(pos, 2i+1).",
+      "ground_truth": "We use sine and cosine functions of different frequencies for positional encoding.",
+      "evidence_span": "sine and cosine functions of different frequencies",
+      "annotation": {
+        "id": "anotasi_seed_014",
+        "kesulitan": "sulit",
+        "catatan": "Rumus positional encoding kompleks, ada di konteks.",
+        "red_flag_jika": "Model mengarang rumus positional encoding yang berbeda."
+      }
+    },
+    {
+      "id": "seed_015",
+      "type": "audit",
+      "topic": "Attention is all you need title",
+      "context": "The dominant sequence transduction models are based on complex recurrent or convolutional neural networks that include an encoder and a decoder. The best performing models also connect the encoder and decoder through an attention mechanism. We propose a new simple network architecture, the Transformer, based solely on attention mechanisms, dispensing with recurrence and convolutions entirely.",
+      "question": "Arsitektur Transformer didasarkan sepenuhnya pada mekanisme perhatian, tanpa rekursi dan konvolusi sama sekali.",
+      "ground_truth": "We propose a new simple network architecture, the Transformer, based solely on attention mechanisms, dispensing with recurrence and convolutions entirely.",
+      "evidence_span": "based solely on attention mechanisms, dispensing with recurrence and convolutions entirely",
+      "annotation": {
+        "id": "anotasi_seed_015",
+        "kesulitan": "mudah",
+        "catatan": "Judul inti paper 'Attention Is All You Need' tercermin di konteks.",
+        "red_flag_jika": "Model mengatakan Transformer masih menggunakan rekursi atau konvolusi utama."
+      }
+    },
+    {
+      "id": "seed_016",
+      "type": "audit",
+      "topic": "Decoder output embedding offset",
+      "context": "In the decoder, the output embeddings are offset by one position to ensure causality in autoregressive generation.",
+      "question": "Output embeddings dalam decoder digeser satu posisi untuk memastikan kausalitas dalam pembuatan autoregresif.",
+      "ground_truth": "In the decoder, the output embeddings are offset by one position to ensure causality in autoregressive generation.",
+      "evidence_span": "output embeddings are offset by one position",
+      "annotation": {
+        "id": "anotasi_seed_016",
+        "kesulitan": "sedang",
+        "catatan": "Offset satu posisi untuk kausalitas dijelaskan.",
+        "red_flag_jika": "Model mengklaim tidak ada offset pada output embedding decoder."
+      }
+    },
+    {
+      "id": "seed_017",
+      "type": "audit",
+      "topic": "Encoder output to decoder attention",
+      "context": "The encoder-decoder attention layer allows every position in the decoder to attend over all positions in the input sequence, analogous to encoder self-attention but with queries from decoder and keys/values from encoder.",
+      "question": "Setiap posisi dalam decoder dapat memperhatikan semua posisi dalam urutan input melalui lapisan perhatian encoder-decoder.",
+      "ground_truth": "every position in the decoder to attend over all positions in the input sequence",
+      "evidence_span": "every position in the decoder to attend over all positions in the input sequence",
+      "annotation": {
+        "id": "anotasi_seed_017",
+        "kesulitan": "sedang",
+        "catatan": "Encoder-decoder attention memungkinkan decoder melihat semua input.",
+        "red_flag_jika": "Model membatasi decoder hanya melihat sebagian input."
+      }
+    },
+    {
+      "id": "seed_018",
+      "type": "audit",
+      "topic": "Dropout sub-layer output",
+      "context": "We apply dropout to the output of each sub-layer, before it is added to the sub-layer input and normalized. The rate of dropout is 0.1.",
+      "question": "Dropout dengan tingkat 0.1 diterapkan pada keluaran setiap sub-lapis sebelum ditambahkan ke input dan dinormalisasi.",
+      "ground_truth": "We apply dropout to the output of each sub-layer, before it is added to the sub-layer input and normalized. The rate of dropout is 0.1.",
+      "evidence_span": "The rate of dropout is 0.1",
+      "annotation": {
+        "id": "anotasi_seed_018",
+        "kesulitan": "mudah",
+        "catatan": "Nilai dropout 0.1 disebutkan secara eksplisit.",
+        "red_flag_jika": "Model menyebut tingkat dropout yang berbeda, mis. 0.5."
+      }
+    },
+    {
+      "id": "seed_019",
+      "type": "audit",
+      "topic": "Warmup steps value",
+      "context": "We use the Adam optimizer with beta_1 = 0.9, beta_2 = 0.98 and epsilon = 1e-9. The learning rate varies according to the formula described in the paper. We use warmup_steps = 4000.",
+      "question": "Langkah pemanasan (warmup steps) ditetapkan pada 4000.",
+      "ground_truth": "We use warmup_steps = 4000.",
+      "evidence_span": "warmup_steps = 4000",
+      "annotation": {
+        "id": "anotasi_seed_019",
+        "kesulitan": "mudah",
+        "catatan": "Nilai warmup_steps ada dalam konteks.",
+        "red_flag_jika": "Model menyebut nilai warmup_steps yang berbeda."
+      }
+    },
+    {
+      "id": "seed_020",
+      "type": "audit",
+      "topic": "Model dimension d_model",
+      "context": "For all experiments, we use d_model = 512. The number of layers in the encoder and decoder stacks is 6 each. The dimensionality of the feed-forward network is d_ff = 2048.",
+      "question": "Dimensi model d_model adalah 512, jumlah lapisan encoder dan decoder masing-masing 6, dan dimensi jaringan syaraf masukan maju d_ff adalah 2048.",
+      "ground_truth": "we use d_model = 512. The number of layers in the encoder and decoder stacks is 6 each. The dimensionality of the feed-forward network is d_ff = 2048.",
+      "evidence_span": "d_model = 512",
+      "annotation": {
+        "id": "anotasi_seed_020",
+        "kesulitan": "sedang",
+        "catatan": "Multi-claim tentang dimensi dan jumlah lapisan.",
+        "red_flag_jika": "Model mengubah salah satu angka dimensi atau jumlah lapisan."
+      }
+    },
+    {
+      "id": "seed_021",
+      "type": "audit",
+      "topic": "Number of attention heads",
+      "context": "We use h = 8 parallel attention heads, or heads. For each of these, the dimension of the keys, values and queries is d_k = d_v = d_model / h = 64.",
+      "question": "Dilakukan delapan head perhatian paralel, dengan dimensi kunci, nilai, dan kueri masing-masing 64.",
+      "ground_truth": "We use h = 8 parallel attention heads, or heads. For each of these, the dimension of the keys, values and queries is d_k = d_v = d_model / h = 64.",
+      "evidence_span": "h = 8 parallel attention heads",
+      "annotation": {
+        "id": "anotasi_seed_021",
+        "kesulitan": "sedang",
+        "catatan": "Jumlah head dan dimensi per head disebutkan.",
+        "red_flag_jika": "Model menyebut jumlah head atau dimensi per head yang berbeda."
+      }
+    },
+    {
+      "id": "seed_022",
+      "type": "audit",
+      "topic": "Queries keys values projection",
+      "context": "The queries, keys and values are all linearly projected h times with different, learned linear projections to d_k, d_k and d_v dimensions, respectively.",
+      "question": "Kueri, kunci, dan nilai masing-masing diproyeksikan secara linear h kali dengan proyeksi linear yang berbeda yang dipelajari.",
+      "ground_truth": "The queries, keys and values are all linearly projected h times with different, learned linear projections.",
+      "evidence_span": "linearly projected h times with different, learned linear projections",
+      "annotation": {
+        "id": "anotasi_seed_022",
+        "kesulitan": "sedang",
+        "catatan": "Proyeksi linear h kali dengan bobot yang dipelajari berbeda.",
+        "red_flag_jika": "Model mengatakan proyeksi sama untuk semua head."
+      }
+    },
+    {
+      "id": "seed_023",
+      "type": "audit",
+      "topic": "Softmax attention weights",
+      "context": "The attention function can be described as mapping a query and a set of key-value pairs to an output, where the output is computed as a weighted sum of the values, where the weight assigned to each value is computed by a compatibility function of the query with the corresponding key.",
+      "question": "Fungsi perhatian menghasilkan output sebagai bobot-bernilai jumlah nilai, di mana bobot setiap nilai dihitung oleh fungsi kompatibilitas kueri dengan kunci yang bersesuaian.",
+      "ground_truth": "the output is computed as a weighted sum of the values, where the weight assigned to each value is computed by a compatibility function of the query with the corresponding key",
+      "evidence_span": "computed as a weighted sum of the values",
+      "annotation": {
+        "id": "anotasi_seed_023",
+        "kesulitan": "sedang",
+        "catatan": "Definisi fungsi attention sebagai weighted sum.",
+        "red_flag_jika": "Model menjelaskan attention dengan cara yang tidak sesuai."
+      }
+    },
+    {
+      "id": "seed_024",
+      "type": "audit",
+      "topic": "Scaled dot-product formula",
+      "context": "Scaled Dot-Product Attention is computed as Attention(Q, K, V) = softmax(QK^T / sqrt(d_k))V.",
+      "question": "Perhatian hasil kali titik diskala dihitung sebagai softmax(QK^T dibagi akar kuadrat d_k) kalian V.",
+      "ground_truth": "Attention(Q, K, V) = softmax(QK^T / sqrt(d_k))V.",
+      "evidence_span": "softmax(QK^T / sqrt(d_k))V",
+      "annotation": {
+        "id": "anotasi_seed_024",
+        "kesulitan": "sulit",
+        "catatan": "Rumus matematis atten­tasi tersedia di konteks.",
+        "red_flag_jika": "Model menulis rumus atten­tasi yang salah."
+      }
+    },
+    {
+      "id": "seed_025",
+      "type": "audit",
+      "topic": "Multi-head concatenation",
+      "context": "Multi-Head Attention runs multiple attention functions in parallel, then concatenates the results and projects them to the expected dimension.",
+      "question": "Multi-Head Attention menjalankan beberapa fungsi perhatian secara paralel, lalu menggabungkan hasilnya dan memroyeksikannya ke dimensi yang diharapkan.",
+      "ground_truth": "Multi-Head Attention runs multiple attention functions in parallel, then concatenates the results and projects them to the expected dimension.",
+      "evidence_span": "concatenates the results and projects them to the expected dimension",
+      "annotation": {
+        "id": "anotasi_seed_025",
+        "kesulitan": "mudah",
+        "catatan": "Konkatentasi dan proyeksi hasil multi-head disebutkan.",
+        "red_flag_jika": "Model mengatakan hasil multi-head dicurahkan (average) bukan digabungkan."
+      }
+    },
+    {
+      "id": "seed_026",
+      "type": "audit",
+      "topic": "Decoder masked attention causality",
+      "context": "This masking ensures that the prediction for position i can depend only on the known outputs at positions less than i, preserving the autoregressive property.",
+      "question": "Masking memastikan prediksi posisi i hanya bergantung pada output yang diketahui pada posisi yang lebih kecil dari i, menjaga properti autoregresif.",
+      "ground_truth": "the prediction for position i can depend only on the known outputs at positions less than i",
+      "evidence_span": "depend only on the known outputs at positions less than i",
+      "annotation": {
+        "id": "anotasi_seed_026",
+        "kesulitan": "sedang",
+        "catatan": "Properti autoregresif dijamin oleh masking.",
+        "red_flag_jika": "Model mengatakan prediksi dapat bergantung pada posisi masa depan."
+      }
+    },
+    {
+      "id": "seed_027",
+      "type": "audit",
+      "topic": "Training objective cross entropy",
+      "context": "The model is trained to maximize the equivalent of the likelihood of the target sequence given the source sequence, using cross-entropy loss over the vocabulary.",
+      "question": "Model dilatih untuk memaksimalkan kemungkinan urutan sasaran diberikan urutan sumber menggunakan entropi silang atas kosakata.",
+      "ground_truth": "The model is trained to maximize the equivalent of the likelihood of the target sequence given the source sequence, using cross-entropy loss over the vocabulary.",
+      "evidence_span": "using cross-entropy loss over the vocabulary",
+      "annotation": {
+        "id": "anotasi_seed_027",
+        "kesulitan": "sedang",
+        "catatan": "Fungsi kerusakan entropi silang disebutkan.",
+        "red_flag_jika": "Model menyebut fungsi kerusakan lain, mis. MSE."
+      }
+    },
+    {
+      "id": "seed_028",
+      "type": "audit",
+      "topic": "Beam search decoding",
+      "context": "We use beam search with a beam size of 4 and length penalty alpha = 0.6 for decoding during inference.",
+      "question": "Pencarian sorotan dengan ukuran sorotan 4 dan pena panjang alpha = 0.6 digunakan untuk dekoding selama inferensi.",
+      "ground_truth": "We use beam search with a beam size of 4 and length penalty alpha = 0.6.",
+      "evidence_span": "beam size of 4 and length penalty alpha = 0.6",
+      "annotation": {
+        "id": "anotasi_seed_028",
+        "kesulitan": "mudah",
+        "catatan": "Parameter beam search disebutkan eksplisit.",
+        "red_flag_jika": "Model menyebut ukuran sorotan atau pena panjang yang berbeda."
+      }
+    },
+    {
+      "id": "seed_029",
+      "type": "audit",
+      "topic": "BLEU evaluation metric",
+      "context": "We evaluate translation quality using BLEU, case-sensitive, detokenized, as computed by the multi-bleu.perl script.",
+      "question": "Kualitas terjemahan dievaluasi menggunakan BLEU, case-sensitive, detokenized, sesuai multi-bleu.perl.",
+      "ground_truth": "We evaluate translation quality using BLEU, case-sensitive, detokenized, as computed by the multi-bleu.perl script.",
+      "evidence_span": "BLEU, case-sensitive, detokenized",
+      "annotation": {
+        "id": "anotasi_seed_029",
+        "kesulitan": "mudah",
+        "catatan": "Metrik evaluasi BLEU disebutkan.",
+        "red_flag_jika": "Model menyebut metrik evaluasi lain, mis. ROUGE."
+      }
+    },
+    {
+      "id": "seed_030",
+      "type": "audit",
+      "topic": "Tokenizer byte pair encoding",
+      "context": "We learn a shared source-target vocabulary of 37000 tokens using byte pair encoding. The vocabulary is shared between the encoder input, decoder input, and decoder output.",
+      "question": "Kosakata sumber-sasaran bersama dengan 37000 token dipelajari menggunakan byte pair encoding, dibagikan encoder input, decoder input, dan decoder output.",
+      "ground_truth": "We learn a shared source-target vocabulary of 37000 tokens using byte pair encoding.",
+      "evidence_span": "shared source-target vocabulary of 37000 tokens",
+      "annotation": {
+        "id": "anotasi_seed_030",
+        "kesulitan": "sedang",
+        "catatan": "Ukuran kosakata dan metode BPE disebutkan.",
+        "red_flag_jika": "Model menyebut ukuran kosakata yang berbeda atau metode tokenisasi lain."
+      }
+    },
+    {
+      "id": "seed_031",
+      "type": "audit",
+      "topic": "Training data size",
+      "context": "We train on the WMT 2014 English-to-German translation task, which consists of 4.5 million sentence pairs.",
+      "question": "Pelatihan dilakukan pada tugas terjemahan Inggris-Jerman WMT 2014 yang terdiri atas 4,5 juta pasang kalimat.",
+      "ground_truth": "which consists of 4.5 million sentence pairs",
+      "evidence_span": "4.5 million sentence pairs",
+      "annotation": {
+        "id": "anotasi_seed_031",
+        "kesulitan": "mudah",
+        "catatan": "Ukuran data pelatihan disebutkan.",
+        "red_flag_jika": "Model menyebut ukuran data pelatihan yang berbeda."
+      }
+    },
+    {
+      "id": "seed_032",
+      "type": "audit",
+      "topic": "Hard negative mining",
+      "context": "For retrieval training, we use hard negative mining where negative passages are selected from the top-ranked results of a BM25 retriever but are not relevant to the query.",
+      "question": "Penambangan negatif sulit digunakan dalam pelatihan retrival, di mana negatif dipilih dari hasil teratas BM25 namun tidak relevan dengan kueri.",
+      "ground_truth": "negative passages are selected from the top-ranked results of a BM25 retriever but are not relevant to the query",
+      "evidence_span": "top-ranked results of a BM25 retriever but are not relevant to the query",
+      "annotation": {
+        "id": "anotasi_seed_032",
+        "kesulitan": "sulit",
+        "catatan": "Definisi hard negative mining dalam konteks retrival.",
+        "red_flag_jika": "Model mengartikan hard negative sebagai negatif acak."
+      }
+    },
+    {
+      "id": "seed_033",
+      "type": "audit",
+      "topic": "Dense retrieval cosine similarity",
+      "context": "Dense retrieval encodes queries and passages into dense vectors using a bi-encoder, and relevance is measured by cosine similarity between the embeddings.",
+      "question": "Retrieval padat mengenkode kueri dan paragraf menjadi vektor padat menggunakan bi-encoder, dan relevansi diukur dengan kesamaan kosinus antara embeddings.",
+      "ground_truth": "relevance is measured by cosine similarity between the embeddings",
+      "evidence_span": "cosine similarity between the embeddings",
+      "annotation": {
+        "id": "anotasi_seed_033",
+        "kesulitan": "sedang",
+        "catatan": "Cosine similarity sebagai ukuran relevansi dense retrieval.",
+        "red_flag_jika": "Model menyebut ukuran relevansi lain, mis. Euclidean distance."
+      }
+    },
+    {
+      "id": "seed_034",
+      "type": "audit",
+      "topic": "Cross-encoder reranking",
+      "context": "A cross-encoder re-ranker jointly encodes the query and each candidate passage, producing a single relevance score per pair, which is more accurate but slower than bi-encoder scoring.",
+      "question": "Cross-encoder re-ranker secara gabungan mengenkode kueri dan setiap paragraf kandidat, menghasilkan satu skor relevansi per pasangan yang lebih akurat namun lebih lambat dari skoring bi-encoder.",
+      "ground_truth": "producing a single relevance score per pair, which is more accurate but slower than bi-encoder scoring",
+      "evidence_span": "more accurate but slower than bi-encoder scoring",
+      "annotation": {
+        "id": "anotasi_seed_034",
+        "kesulitan": "sulit",
+        "catatan": "Trade-off akurasi vs kecepatan cross-encoder disebutkan.",
+        "red_flag_jika": "Model mengatakan cross-encoder lebih cepat dari bi-encoder."
+      }
+    },
+    {
+      "id": "seed_035",
+      "type": "audit",
+      "topic": "Reciprocal rank fusion",
+      "context": "Reciprocal Rank Fusion (RRF) combines results from multiple retrievers by assigning each result a score of 1 / (k + r) where r is the rank and k is a constant, then summing across retrievers.",
+      "question": "Fusi peringkat terbalik (RRF) menggabungkan hasil dari banyak retriever dengan memberikan setiap hasil skor 1 dibagi (k + r), lalu dijumlahkan di seluruh retriever.",
+      "ground_truth": "assigning each result a score of 1 / (k + r) where r is the rank and k is a constant",
+      "evidence_span": "score of 1 / (k + r) where r is the rank and k is a constant",
+      "annotation": {
+        "id": "anotasi_seed_035",
+        "kesulitan": "sulit",
+        "catatan": "Rumus RRF disebutkan di konteks.",
+        "red_flag_jika": "Model menyebut rumus fusi peringkat yang berbeda."
+      }
+    },
+    {
+      "id": "seed_036",
+      "type": "audit",
+      "topic": "Hybrid retrieval dense bm25",
+      "context": "Hybrid retrieval combines dense vector search with sparse BM25 keyword matching to capture both semantic and lexical relevance, then fuses the ranked lists.",
+      "question": "Retrieval hibrid menggabungkan pencarian vektor padat dengan pencocokan kata kunci BM25 untuk menangkap relevansi semantik dan leksikal.",
+      "ground_truth": "Hybrid retrieval combines dense vector search with sparse BM25 keyword matching to capture both semantic and lexical relevance",
+      "evidence_span": "semantic and lexical relevance",
+      "annotation": {
+        "id": "anotasi_seed_036",
+        "kesulitan": "sedang",
+        "catatan": "Definisi hybrid retrieval dense + BM25.",
+        "red_flag_jika": "Model mengatakan hybrid hanya menggunakan satu metode saja."
+      }
+    },
+    {
+      "id": "seed_037",
+      "type": "audit",
+      "topic": "Confidence abstention threshold",
+      "context": "The confidence engine abstains from answering when the evidence relevance score is below 0.35, to avoid generating hallucinated responses without sufficient support.",
+      "question": "Mesin kepercayaan menahan jawaban ketika skor relevansi bukti di bawah 0.35 untuk menghindari respons yang halusinasi.",
+      "ground_truth": "The confidence engine abstains from answering when the evidence relevance score is below 0.35",
+      "evidence_span": "below 0.35",
+      "annotation": {
+        "id": "anotasi_seed_037",
+        "kesulitan": "sedang",
+        "catatan": "Ambang batas abstensi 0.35 untuk menghindari halusinasi.",
+        "red_flag_jika": "Model mengklaim tidak ada ambang batas abstensi."
+      }
+    },
+    {
+      "id": "seed_038",
+      "type": "audit",
+      "topic": "Faithfulness score definition",
+      "context": "Faithfulness score is computed as the fraction of supported claims divided by the total number of evaluable claims in a response.",
+      "question": "Skor kesetiaan dihitung sebagai pecahan klaim yang didukung dibagi total klaim yang dapat dievaluasi dalam respons.",
+      "ground_truth": "the fraction of supported claims divided by the total number of evaluable claims",
+      "evidence_span": "fraction of supported claims divided by the total number of evaluable claims",
+      "annotation": {
+        "id": "anotasi_seed_038",
+        "kesulitan": "mudah",
+        "catatan": "Definisi skor faithfulness tersedia.",
+        "red_flag_jika": "Model mendefinisikan faithfulness secara berbeda."
+      }
+    },
+    {
+      "id": "seed_039",
+      "type": "audit",
+      "topic": "Insufficient context signal",
+      "context": "When the model returns the INSUFFICIENT_CONTEXT signal, it means no evidence chunks met the minimum relevance threshold and the model should not generate an answer.",
+      "question": "Sinyal INSUFFICIENT_CONTEXT berarti tidak ada potongan bukti yang memenuhi ambang relevansi minimum dan model tidak boleh menghasilkan jawaban.",
+      "ground_truth": "no evidence chunks met the minimum relevance threshold and the model should not generate an answer",
+      "evidence_span": "no evidence chunks met the minimum relevance threshold",
+      "annotation": {
+        "id": "anotasi_seed_039",
+        "kesulitan": "sedang",
+        "catatan": "Arti sinyal INSUFFICIENT_CONTEXT dijelaskan.",
+        "red_flag_jika": "Model mengartikan sinyal ini sebagai perintah untuk tetap menjawab."
+      }
+    },
+    {
+      "id": "seed_040",
+      "type": "audit",
+      "topic": "Timeout failure mode",
+      "context": "When the generation provider does not respond within the timeout window (30-60s), the circuit breaker opens and the system returns a controlled 502 status rather than waiting indefinitely.",
+      "question": "Ketika penyedia pembangkitan tidak merespons dalam jendela timeout (30-60 detik), circuit breaker terbuka dan sistem mengembalikan status 502 terkontrol.",
+      "ground_truth": "the circuit breaker opens and the system returns a controlled 502 status rather than waiting indefinitely",
+      "evidence_span": "circuit breaker opens and the system returns a controlled 502 status",
+      "annotation": {
+        "id": "anotasi_seed_040",
+        "kesulitan": "sedang",
+        "catatan": "Perilaku timeout dan failure_mode tercakup dalam konteks.",
+        "red_flag_jika": "Model mengatakan sistem menunggu tanpa batas saat timeout."
+      }
+    },
+    {
+      "id": "seed_041",
+      "type": "audit",
+      "topic": "Hard abstention red zone",
+      "context": "Evidence relevance scores below 0.35 fall in the red zone: hard abstention, the generator is not called, guaranteeing zero hallucination on low-evidence queries.",
+      "question": "Skor relevansi bukti di bawah 0.35 termasuk zona merah: penahanan keras, generator tidak dipanggil, menjamin nol halusinasi pada kueri bukti rendah.",
+      "ground_truth": "Evidence relevance scores below 0.35 fall in the red zone: hard abstention, the generator is not called",
+      "evidence_span": "below 0.35 fall in the red zone",
+      "annotation": {
+        "id": "anotasi_seed_041",
+        "kesulitan": "sedang",
+        "catatan": "Zona merah dan penahanan keras dijelaskan.",
+        "red_flag_jika": "Model mengatakan generator masih dipanggil di zona merah."
+      }
+    },
+    {
+      "id": "seed_042",
+      "type": "audit",
+      "topic": "Partial trust yellow zone",
+      "context": "Evidence relevance scores between 0.35 and 0.65 fall in the yellow zone: the generator is limited to the top 3 strongest evidence chunks and the answer is marked with partial trust.",
+      "question": "Skor relevansi bukti antara 0.35 dan 0.65 termasuk zona kuning: generator dibatasi pada 3 bukti terkuat dan jawaban ditandai dengan kepercayaan parsial.",
+      "ground_truth": "the generator is limited to the top 3 strongest evidence chunks and the answer is marked with partial trust",
+      "evidence_span": "top 3 strongest evidence chunks",
+      "annotation": {
+        "id": "anotasi_seed_042",
+        "kesulitan": "sedang",
+        "catatan": "Zona kuning dan pembatasan 3 bukti terkuat.",
+        "red_flag_jika": "Model mengatakan generator bebas menggunakan semua bukti di zona kuning."
+      }
+    },
+    {
+      "id": "seed_043",
+      "type": "audit",
+      "topic": "Full generate green zone",
+      "context": "Evidence relevance scores at or above 0.65 fall in the green zone: high relevance and consistent across dense and sparse sources; full answer generation with full attribution is permitted.",
+      "question": "Skor relevansi bukti 0,65 atau lebih termasuk zona hijau: relevansi tinggi dan konsisten lintas sumber padat dan ringan; pembangkitan jawaban penuh dengan atribusi penuh diizinkan.",
+      "ground_truth": "Evidence relevance scores at or above 0.65 fall in the green zone",
+      "evidence_span": "at or above 0.65 fall in the green zone",
+      "annotation": {
+        "id": "anotasi_seed_043",
+        "kesulitan": "sedang",
+        "catatan": "Zona hijau diizinkan generate penuh.",
+        "red_flag_jika": "Model menahan jawaban di zona hijau meskipun bukti cukup."
+      }
+    },
+    {
+      "id": "seed_044",
+      "type": "audit",
+      "topic": "Span-level attribution",
+      "context": "Each claim in a generated answer is mapped to a specific source document ID, chunk ID, and source text line for span-level attribution and auditability.",
+      "question": "Setiap klaim dalam jawaban yang dihasilkan dipetakan ke ID dokumen sumber, ID chunk, dan baris teks sumber untuk atribusi tingkat span dan auditabilitas.",
+      "ground_truth": "Each claim in a generated answer is mapped to a specific source document ID, chunk ID, and source text line",
+      "evidence_span": "source document ID, chunk ID, and source text line",
+      "annotation": {
+        "id": "anotasi_seed_044",
+        "kesulitan": "mudah",
+        "catatan": "Atribusi tingkat span untuk audit klaim.",
+        "red_flag_jika": "Model mengatakan klaim tidak perlu dipetakan ke sumber spesifik."
+      }
+    },
+    {
+      "id": "seed_045",
+      "type": "audit",
+      "topic": "No LLM-as-judge principle",
+      "context": "The system does not use an LLM as a judge to decide factual correctness; verification is done against the indexed corpus with span-level evidence, not universal truth.",
+      "question": "Sistem tidak menggunakan LLM sebagai hakim untuk menentukan kebenaran faktual; verifikasi dilakukan terhadap korpus yang diindeks dengan bukti tingkat span, bukan kebenaran alam semesta.",
+      "ground_truth": "The system does not use an LLM as a judge to decide factual correctness",
+      "evidence_span": "does not use an LLM as a judge",
+      "annotation": {
+        "id": "anotasi_seed_045",
+        "kesulitan": "mudah",
+        "catatan": "Prinsip no LLM-as-judge adalah non-goal utama proyek.",
+        "red_flag_jika": "Model mengklaim sistem menggunakan LLM-as-judge."
+      }
+    },
+    {
+      "id": "seed_046",
+      "type": "audit",
+      "topic": "Groq default provider",
+      "context": "The generation provider defaults to Groq with model openai/gpt-oss-20b. Ollama phi3:mini is available as a local fallback but is RAM-heavy.",
+      "question": "Penyedia pembangkitan default adalah Groq dengan model openai/gpt-oss-20b, sementara Ollama phi3:mini tersedia sebagai cadangan lokal yang konsumsi RAM tinggi.",
+      "ground_truth": "The generation provider defaults to Groq with model openai/gpt-oss-20b",
+      "evidence_span": "defaults to Groq with model openai/gpt-oss-20b",
+      "annotation": {
+        "id": "anotasi_seed_046",
+        "kesulitan": "mudah",
+        "catatan": "Provider generasi default dan modelnya disebutkan.",
+        "red_flag_jika": "Model menyebut provider default yang berbeda."
+      }
+    },
+    {
+      "id": "seed_047",
+      "type": "audit",
+      "topic": "Embedding model",
+      "context": "The embedding model used is sentence-transformers/all-MiniLM-L6-v2, cached for offline use with HF_HUB_OFFLINE=1.",
+      "question": "Model embeddings yang digunakan adalah sentence-transformers/all-MiniLM-L6-v2, di-cache untuk penggunaan offline dengan HF_HUB_OFFLINE=1.",
+      "ground_truth": "sentence-transformers/all-MiniLM-L6-v2",
+      "evidence_span": "sentence-transformers/all-MiniLM-L6-v2",
+      "annotation": {
+        "id": "anotasi_seed_047",
+        "kesulitan": "mudah",
+        "catatan": "Nama model embeddings disebutkan.",
+        "red_flag_jika": "Model menyebut model embeddings yang berbeda."
+      }
+    },
+    {
+      "id": "seed_048",
+      "type": "audit",
+      "topic": "Batch limit 100",
+      "context": "The batch endpoint accepts at most 100 items per request to prevent overload.",
+      "question": "Endpoint batch menerima paling banyak 100 item per permintaan untuk mencegah beban berlebih.",
+      "ground_truth": "at most 100 items per request",
+      "evidence_span": "at most 100 items per request",
+      "annotation": {
+        "id": "anotasi_seed_048",
+        "kesulitan": "mudah",
+        "catatan": "Batas batch 100 item untuk pencegahan overload.",
+        "red_flag_jika": "Model mengatakan tidak ada batas jumlah item batch."
+      }
+    },
+    {
+      "id": "seed_049",
+      "type": "audit",
+      "topic": "Rate limiting per key",
+      "context": "Rate limits are applied per API key to prevent a single client from monopolizing the service, with separate counters for each key tier.",
+      "question": "Batas laju diterapkan per kunci API untuk mencegah satu klien mendominasi layanan, dengan counter terpisah untuk setiap tingkat kunci.",
+      "ground_truth": "Rate limits are applied per API key",
+      "evidence_span": "per API key",
+      "annotation": {
+        "id": "anotasi_seed_049",
+        "kesulitan": "sedang",
+        "catatan": "Rate limiting per kunci API untuk keadilan penggunaan.",
+        "red_flag_jika": "Model mengatakan rate limiting diterapkan secara global per IP saja."
+      }
+    },
+    {
+      "id": "seed_050",
+      "type": "audit",
+      "topic": "Graceful shutdown 30s",
+      "context": "On shutdown, the service stops accepting new requests and waits up to 30 seconds for in-flight requests to complete before terminating.",
+      "question": "Pada shutdown, layanan berhenti menerima permintaan baru dan menunggu hingga 30 detik untuk permintaan yang sedang berjalan selesai sebelum dihentikan.",
+      "ground_truth": "waits up to 30 seconds for in-flight requests to complete before terminating",
+      "evidence_span": "waits up to 30 seconds for in-flight requests",
+      "annotation": {
+        "id": "anotasi_seed_050",
+        "kesulitan": "sedang",
+        "catatan": "Penyelesaian pelan 30 detik saat shutdown.",
+        "red_flag_jika": "Model mengatakan layanan dihentikan segera saat shutdown."
+      }
+    },
+    {
+      "id": "seed_051",
+      "type": "audit",
+      "topic": "OpenTelemetry opt-in",
+      "context": "OpenTelemetry instrumentation is opt-in and traces are exported to the configured backend only when enabled.",
+      "question": "Instrumentasi OpenTelemetry bersifat opsional dan jejak diekspor ke backend yang dikonfigurasi hanya saat diaktifkan.",
+      "ground_truth": "OpenTelemetry instrumentation is opt-in",
+      "evidence_span": "opt-in",
+      "annotation": {
+        "id": "anotasi_seed_051",
+        "kesulitan": "mudah",
+        "catatan": "OpenTelemetry default tidak aktif.",
+        "red_flag_jika": "Model mengatakan OpenTelemetry selalu aktif secara default."
+      }
+    },
+    {
+      "id": "seed_052",
+      "type": "audit",
+      "topic": "False insufficient context",
+      "context": "A false insufficient context occurs when the model claims INSUFFICIENT_CONTEXT even though evidence exists in the context with similarity above the validation threshold.",
+      "question": "False insufficient context terjadi ketika model mengklaim INSUFFICIENT_CONTEXT padahal bukti ada dalam konteks dengan kesamaan di atas ambang validasi.",
+      "ground_truth": "the model claims INSUFFICIENT_CONTEXT even though evidence exists in the context with similarity above the validation threshold",
+      "evidence_span": "evidence exists in the context with similarity above the validation threshold",
+      "annotation": {
+        "id": "anotasi_seed_052",
+        "kesulitan": "sulit",
+        "catatan": "Deteksi false insufficient context untuk kalibrasi abstensi.",
+        "red_flag_jika": "Model tidak mengenali kasus false insufficient context."
+      }
+    }
+  ]
+}
