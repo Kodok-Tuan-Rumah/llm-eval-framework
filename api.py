@@ -63,6 +63,38 @@ class EvalResponse(BaseModel):
     evaluator_version: str
 
 
+class EvalBatchItem(BaseModel):
+    claim: str
+    context: str
+    question: str = ""
+
+
+class EvalBatchRequest(BaseModel):
+    items: list[EvalBatchItem]
+
+
+class EvalBatchResult(BaseModel):
+    claim_index: int
+    faithfulness_score: float
+    failure_mode: str
+    has_failure: bool
+    supported_claims: int
+    total_claims: int
+    evaluator_version: str
+
+
+class EvalBatchSummary(BaseModel):
+    avg_faithfulness: float
+    supported_pct: float
+    partial_pct: float
+    unsupported_pct: float
+
+
+class EvalBatchResponse(BaseModel):
+    results: list[EvalBatchResult]
+    summary: EvalBatchSummary
+
+
 @app.get("/health")
 def health():
     return {"status": "ok", "service": "llm-eval-framework"}
@@ -80,6 +112,71 @@ def ready():
         )
     return {"status": "ready", "service": "llm-eval-framework", "check": "readiness"}
 
+
+
+@app.post("/evaluate_batch", response_model=EvalBatchResponse)
+def evaluate_batch(req: EvalBatchRequest):
+    if evaluator is None:
+        raise HTTPException(status_code=503, detail="FaithfulnessEvaluator not initialized")
+    if not req.items:
+        raise HTTPException(status_code=400, detail="items cannot be empty")
+
+    results = []
+    supported = 0
+    partial = 0
+    unsupported = 0
+    scores = []
+
+    for idx, item in enumerate(req.items):
+        if not item.claim.strip():
+            raise HTTPException(status_code=400, detail=f"item {idx}: claim cannot be empty")
+        if not item.context.strip():
+            raise HTTPException(status_code=400, detail=f"item {idx}: context cannot be empty")
+
+        case = {
+            "id": str(uuid.uuid4()),
+            "context": item.context,
+            "question": item.question or item.claim,
+        }
+        try:
+            result = evaluator.evaluate(case=case, model_answer=item.claim)
+        except Exception as e:
+            logger.error(f"Batch evaluation failed at {idx}: {e}")
+            raise HTTPException(status_code=500, detail=f"evaluation failed: {e}")
+
+        failure_mode = "none"
+        if result.has_failure:
+            failure_mode = "unsupported_claims"
+        if result.is_insufficient_context_response:
+            failure_mode = "insufficient_context"
+
+        if failure_mode == "none":
+            supported += 1
+        elif failure_mode == "insufficient_context":
+            partial += 1
+        else:
+            unsupported += 1
+
+        scores.append(result.faithfulness_score)
+        results.append(EvalBatchResult(
+            claim_index=idx,
+            faithfulness_score=result.faithfulness_score,
+            failure_mode=failure_mode,
+            has_failure=result.has_failure,
+            supported_claims=result.supported_count,
+            total_claims=result.total_claims,
+            evaluator_version=result.evaluator_version,
+        ))
+
+    n = len(req.items)
+    avg = sum(scores) / n if n else 0.0
+    summary = EvalBatchSummary(
+        avg_faithfulness=round(avg, 4),
+        supported_pct=round(supported / n, 4) if n else 0.0,
+        partial_pct=round(partial / n, 4) if n else 0.0,
+        unsupported_pct=round(unsupported / n, 4) if n else 0.0,
+    )
+    return EvalBatchResponse(results=results, summary=summary)
 
 @app.get("/metrics")
 def metrics():
