@@ -10,7 +10,6 @@ PROJECT_ROOT = Path(__file__).parent.parent
 # Snapshot konfigurasi yang relevan untuk mereproduksi sebuah hasil.
 _SNAPSHOT_SECTIONS = ("thresholds", "models", "inference")
 
-
 def sha256_file(path: str | Path | None) -> str | None:
     if not path:
         return None
@@ -22,7 +21,6 @@ def sha256_file(path: str | Path | None) -> str | None:
         for chunk in iter(lambda: f.read(65536), b""):
             digest.update(chunk)
     return digest.hexdigest()
-
 
 def git_commit(root: str | Path | None = None) -> str | None:
     try:
@@ -55,10 +53,8 @@ def git_dirty(root: str | Path | None = None) -> bool | None:
         pass
     return None
 
-
 def config_snapshot() -> dict:
     return {section: dict(config.get(section, {})) for section in _SNAPSHOT_SECTIONS}
-
 
 def build_provenance(
     evaluator_version: str,
